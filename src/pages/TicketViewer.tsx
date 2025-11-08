@@ -3,8 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { TicketCard } from '@/components/TicketCard';
-import { ArrowLeft, Download, Share2, Send } from 'lucide-react';
+import { SocialShare } from '@/components/SocialShare';
+import { ArrowLeft, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const TicketViewer = () => {
   const { ticketId } = useParams();
@@ -54,35 +56,8 @@ const TicketViewer = () => {
     };
   }, [ticketId, navigate]);
 
-  const handleShare = async () => {
-    const shareUrl = window.location.href;
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Ticket for ${ticket.events.title}`,
-          text: `Check out my ticket for ${ticket.events.title}!`,
-          url: shareUrl
-        });
-      } catch (error) {
-        // User cancelled share
-      }
-    } else {
-      await navigator.clipboard.writeText(shareUrl);
-      toast.success('Link copied to clipboard!');
-    }
-  };
-
   const handleDownload = () => {
     toast.info('Screenshot this page to save your ticket!');
-  };
-
-  const handleWhatsAppShare = () => {
-    if (!ticket) return;
-    const url = window.location.href;
-    const message = `🎫 My ticket for ${ticket.events.title}\n\nView ticket: ${url}`;
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
   };
 
   if (!ticket) return null;
@@ -105,20 +80,30 @@ const TicketViewer = () => {
         <div className="space-y-6">
           <TicketCard ticket={ticket} />
 
-          <div className="flex gap-3 flex-wrap">
-            <Button variant="default" className="flex-1 min-w-[140px]" onClick={handleWhatsAppShare}>
-              <Send className="w-4 h-4 mr-2" />
-              WhatsApp
-            </Button>
-            <Button variant="outline" className="flex-1 min-w-[140px]" onClick={handleShare}>
-              <Share2 className="w-4 h-4 mr-2" />
-              Share
-            </Button>
-            <Button variant="outline" className="flex-1 min-w-[140px]" onClick={handleDownload}>
-              <Download className="w-4 h-4 mr-2" />
-              Download
-            </Button>
-          </div>
+          <Card className="border-2 border-primary/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Download className="w-5 h-5" />
+                Save & Share
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={handleDownload}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download Ticket
+              </Button>
+              
+              <SocialShare 
+                url={window.location.href}
+                title={`Ticket for ${ticket.events.title}`}
+                description={`Check out my ticket for ${ticket.events.title}!`}
+              />
+            </CardContent>
+          </Card>
 
           {ticket.is_validated && (
             <div className="p-4 rounded-lg border-2 border-primary/30 bg-primary/10 text-center">

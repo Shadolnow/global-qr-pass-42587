@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Calendar, MapPin, Download, Share2, ArrowLeft, DollarSign, Ticket } from 'lucide-react';
+import { SocialShare } from '@/components/SocialShare';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Calendar, MapPin, Download, ArrowLeft, DollarSign, Ticket, Clock, HelpCircle, Image as ImageIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -103,7 +105,7 @@ const PublicEvent = () => {
   };
 
   const handleDownload = () => {
-    toast.info('To save your ticket, take a screenshot of this page or use the share button');
+    toast.info('To save your ticket, take a screenshot or use the share options below');
   };
 
   if (!event) {
@@ -162,6 +164,96 @@ const PublicEvent = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Gallery */}
+        {event.gallery_images && event.gallery_images.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ImageIcon className="w-5 h-5" />
+                Event Gallery
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {event.gallery_images.map((url: string, index: number) => (
+                  <img 
+                    key={index}
+                    src={url} 
+                    alt={`Gallery ${index + 1}`}
+                    className="w-full h-48 object-cover rounded-lg border-2 border-border hover:scale-105 transition-transform cursor-pointer"
+                    onClick={() => window.open(url, '_blank')}
+                  />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Schedule */}
+        {event.schedule && event.schedule.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Event Schedule
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {event.schedule.map((item: any, index: number) => (
+                  <div key={index} className="flex gap-4 p-4 border rounded-lg">
+                    <div className="text-primary font-bold min-w-[80px]">
+                      {item.time}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold mb-1">{item.title}</h4>
+                      {item.description && (
+                        <p className="text-sm text-muted-foreground">{item.description}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* FAQ */}
+        {event.faq && event.faq.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <HelpCircle className="w-5 h-5" />
+                Frequently Asked Questions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Accordion type="single" collapsible className="w-full">
+                {event.faq.map((item: any, index: number) => (
+                  <AccordionItem key={index} value={`item-${index}`}>
+                    <AccordionTrigger>{item.question}</AccordionTrigger>
+                    <AccordionContent>{item.answer}</AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Additional Info */}
+        {event.additional_info && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Additional Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="whitespace-pre-wrap text-muted-foreground">
+                {event.additional_info}
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Ticket Claiming or Display */}
         {!event.is_free ? (
@@ -224,32 +316,33 @@ const PublicEvent = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Your Ticket</h2>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={handleDownload}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Download
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => {
-                  const ticketUrl = `${window.location.origin}/ticket/${claimedTicket.id}`;
-                  if (navigator.share) {
-                    navigator.share({ url: ticketUrl });
-                  } else {
-                    navigator.clipboard.writeText(ticketUrl);
-                    toast.success('Ticket link copied!');
-                  }
-                }}>
-                  <Share2 className="w-4 h-4 mr-2" />
-                  Share
-                </Button>
-              </div>
-            </div>
-            <TicketCard ticket={claimedTicket} />
-            <p className="text-sm text-muted-foreground text-center">
-              Your ticket has been sent to WhatsApp. Please present this ticket and your ID card at entry.
-            </p>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Ticket</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <TicketCard ticket={claimedTicket} />
+                
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={handleDownload} className="flex-1">
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
+                </div>
+
+                <SocialShare 
+                  url={`${window.location.origin}/ticket/${claimedTicket.id}`}
+                  title={`Ticket for ${event.title}`}
+                  description="Check out my event ticket!"
+                  compact
+                />
+                
+                <p className="text-sm text-muted-foreground text-center">
+                  Please present this ticket at entry
+                </p>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>

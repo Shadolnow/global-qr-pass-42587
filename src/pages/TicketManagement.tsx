@@ -9,8 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { TicketCard } from '@/components/TicketCard';
 import { AttendeeList } from '@/components/AttendeeList';
+import { EventStats } from '@/components/EventStats';
+import { EventCustomization } from '@/components/EventCustomization';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Ticket as TicketIcon, Users } from 'lucide-react';
+import { ArrowLeft, Plus, Ticket as TicketIcon, Users, Settings } from 'lucide-react';
 import { z } from 'zod';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -118,7 +120,7 @@ const TicketManagement = () => {
 
       if (error) throw error;
 
-      // Send ticket via WhatsApp with fallback
+      // Copy ticket link to clipboard - user can share manually
       const ticketUrl = `${window.location.origin}/ticket/${ticketData.id}`;
       const message = 
         `🎟️ Your ticket for ${event.title}\n\n` +
@@ -126,21 +128,11 @@ const TicketManagement = () => {
         `📍 ${event.venue}\n\n` +
         `View your ticket: ${ticketUrl}`;
       
-      // Copy to clipboard as fallback
-      navigator.clipboard.writeText(`${message}\n\nManually send this to WhatsApp: ${formData.phone}`);
+      await navigator.clipboard.writeText(message);
+      toast.success('Ticket generated! Link copied to clipboard - share it with the attendee.', {
+        duration: 5000
+      });
       
-      // Try to open WhatsApp
-      const cleanPhone = formData.phone.replace(/\D/g, '');
-      const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-      
-      const popup = window.open(whatsappUrl, '_blank');
-      if (!popup) {
-        toast.info('Ticket link copied to clipboard! Please manually send to WhatsApp', {
-          duration: 5000
-        });
-      } else {
-        toast.success('Ticket generated and sent to WhatsApp!');
-      }
       setFormData({ name: '', email: '', phone: '' });
       setIsDialogOpen(false);
     } catch (error: any) {
@@ -151,6 +143,10 @@ const TicketManagement = () => {
   };
 
   if (!event) return null;
+
+  const validatedCount = tickets.filter(t => t.is_validated).length;
+  const pendingCount = tickets.length - validatedCount;
+  const uniqueAttendees = Array.from(new Set(tickets.map(t => t.attendee_email))).length;
 
   return (
     <div className="min-h-screen p-8">
@@ -166,7 +162,7 @@ const TicketManagement = () => {
               {event.title}
             </h1>
             <p className="text-muted-foreground">
-              {tickets.length} ticket{tickets.length !== 1 ? 's' : ''} generated
+              Event Management Dashboard
             </p>
           </div>
 
@@ -206,7 +202,7 @@ const TicketManagement = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Attendee Phone (with country code)</Label>
+                  <Label htmlFor="phone">Attendee Phone</Label>
                   <Input
                     id="phone"
                     type="tel"
@@ -216,7 +212,7 @@ const TicketManagement = () => {
                     required
                   />
                   <p className="text-xs text-muted-foreground">
-                    Ticket will be sent to this WhatsApp number
+                    Ticket link will be copied to clipboard for you to share
                   </p>
                 </div>
                 <Button
@@ -225,7 +221,7 @@ const TicketManagement = () => {
                   className="w-full"
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Generating...' : 'Generate & Send to WhatsApp'}
+                  {isLoading ? 'Generating...' : 'Generate Ticket'}
                 </Button>
               </form>
             </DialogContent>
@@ -245,17 +241,29 @@ const TicketManagement = () => {
             </Button>
           </Card>
         ) : (
-          <Tabs defaultValue="tickets" className="space-y-6">
-            <TabsList className="grid w-full md:w-auto grid-cols-2">
-              <TabsTrigger value="tickets">
-                <TicketIcon className="w-4 h-4 mr-2" />
-                Tickets
-              </TabsTrigger>
-              <TabsTrigger value="attendees">
-                <Users className="w-4 h-4 mr-2" />
-                Attendees
-              </TabsTrigger>
-            </TabsList>
+          <div className="space-y-6">
+            <EventStats 
+              totalTickets={tickets.length}
+              validatedTickets={validatedCount}
+              pendingTickets={pendingCount}
+              attendees={tickets}
+            />
+
+            <Tabs defaultValue="tickets" className="space-y-6">
+              <TabsList className="grid w-full md:w-auto grid-cols-3">
+                <TabsTrigger value="tickets">
+                  <TicketIcon className="w-4 h-4 mr-2" />
+                  Tickets
+                </TabsTrigger>
+                <TabsTrigger value="attendees">
+                  <Users className="w-4 h-4 mr-2" />
+                  Attendees
+                </TabsTrigger>
+                <TabsTrigger value="customize">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Customize
+                </TabsTrigger>
+              </TabsList>
 
             <TabsContent value="tickets">
               <div className="grid md:grid-cols-2 gap-6">
@@ -269,10 +277,24 @@ const TicketManagement = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="attendees">
-              <AttendeeList tickets={tickets} eventTitle={event.title} />
-            </TabsContent>
-          </Tabs>
+              <TabsContent value="attendees">
+                <AttendeeList tickets={tickets} eventTitle={event.title} />
+              </TabsContent>
+
+              <TabsContent value="customize">
+                <EventCustomization 
+                  eventId={eventId!}
+                  userId={user!.id}
+                  initialData={{
+                    galleryImages: event.gallery_images,
+                    faq: event.faq,
+                    schedule: event.schedule,
+                    additionalInfo: event.additional_info
+                  }}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
         )}
       </div>
     </div>

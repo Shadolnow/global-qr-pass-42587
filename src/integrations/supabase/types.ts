@@ -16,14 +16,19 @@ export type Database = {
     Tables: {
       events: {
         Row: {
+          additional_info: string | null
           created_at: string
           currency: string | null
           description: string | null
           event_date: string
+          faq: Json | null
+          gallery_images: string[] | null
           id: string
           image_url: string | null
           is_free: boolean
           promotion_text: string | null
+          schedule: Json | null
+          sponsors: Json | null
           ticket_price: number | null
           tickets_issued: number
           title: string
@@ -32,14 +37,19 @@ export type Database = {
           venue: string
         }
         Insert: {
+          additional_info?: string | null
           created_at?: string
           currency?: string | null
           description?: string | null
           event_date: string
+          faq?: Json | null
+          gallery_images?: string[] | null
           id?: string
           image_url?: string | null
           is_free?: boolean
           promotion_text?: string | null
+          schedule?: Json | null
+          sponsors?: Json | null
           ticket_price?: number | null
           tickets_issued?: number
           title: string
@@ -48,14 +58,19 @@ export type Database = {
           venue: string
         }
         Update: {
+          additional_info?: string | null
           created_at?: string
           currency?: string | null
           description?: string | null
           event_date?: string
+          faq?: Json | null
+          gallery_images?: string[] | null
           id?: string
           image_url?: string | null
           is_free?: boolean
           promotion_text?: string | null
+          schedule?: Json | null
+          sponsors?: Json | null
           ticket_price?: number | null
           tickets_issued?: number
           title?: string

@@ -17,6 +17,8 @@ export type Database = {
       events: {
         Row: {
           additional_info: string | null
+          capacity: number | null
+          category: string | null
           created_at: string
           currency: string | null
           description: string | null
@@ -29,6 +31,7 @@ export type Database = {
           promotion_text: string | null
           schedule: Json | null
           sponsors: Json | null
+          tags: string[] | null
           ticket_price: number | null
           tickets_issued: number
           title: string
@@ -38,6 +41,8 @@ export type Database = {
         }
         Insert: {
           additional_info?: string | null
+          capacity?: number | null
+          category?: string | null
           created_at?: string
           currency?: string | null
           description?: string | null
@@ -50,6 +55,7 @@ export type Database = {
           promotion_text?: string | null
           schedule?: Json | null
           sponsors?: Json | null
+          tags?: string[] | null
           ticket_price?: number | null
           tickets_issued?: number
           title: string
@@ -59,6 +65,8 @@ export type Database = {
         }
         Update: {
           additional_info?: string | null
+          capacity?: number | null
+          category?: string | null
           created_at?: string
           currency?: string | null
           description?: string | null
@@ -71,6 +79,7 @@ export type Database = {
           promotion_text?: string | null
           schedule?: Json | null
           sponsors?: Json | null
+          tags?: string[] | null
           ticket_price?: number | null
           tickets_issued?: number
           title?: string
@@ -180,6 +189,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_ticket_availability: {
+        Args: { event_id_input: string }
+        Returns: boolean
+      }
       get_ticket_by_code: {
         Args: { ticket_code_input: string }
         Returns: {

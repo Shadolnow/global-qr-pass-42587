@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { TicketCard } from '@/components/TicketCard';
 import { SocialShare } from '@/components/SocialShare';
-import { ArrowLeft, Download, Share2 } from 'lucide-react';
+import { ArrowLeft, Download, Share2, Home } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import html2canvas from 'html2canvas';
@@ -13,6 +13,7 @@ const TicketViewer = () => {
   const { ticketId } = useParams();
   const navigate = useNavigate();
   const [ticket, setTicket] = useState<any>(null);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     if (!ticketId) return;
@@ -61,22 +62,46 @@ const TicketViewer = () => {
     const ticketElement = document.getElementById('ticket-card');
     if (!ticketElement) return;
 
+    setDownloading(true);
     try {
-      toast.info('Generating ticket image...');
+      toast.info('Generating ticket image...', { duration: 2000 });
+      
+      // Wait a bit for any animations to complete
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       const canvas = await html2canvas(ticketElement, {
-        backgroundColor: '#ffffff',
-        scale: 2,
+        backgroundColor: '#0a0f1c',
+        scale: 3,
         logging: false,
+        useCORS: true,
+        allowTaint: true,
       });
       
-      const link = document.createElement('a');
-      link.download = `ticket-${ticket.ticket_code}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      // Convert to blob for better quality
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          throw new Error('Failed to generate image');
+        }
+        
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `ticket-${ticket.ticket_code}.png`;
+        link.href = url;
+        link.click();
+        
+        // Cleanup
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+        
+        toast.success('Ticket downloaded successfully!');
+      }, 'image/png', 1.0);
       
-      toast.success('Ticket downloaded!');
     } catch (error) {
-      toast.error('Failed to download ticket. Try taking a screenshot instead.');
+      console.error('Download error:', error);
+      toast.error('Download failed. Please take a screenshot instead.', {
+        description: 'On mobile: Long press the ticket and select "Save Image"'
+      });
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -112,10 +137,16 @@ const TicketViewer = () => {
       </div>
 
       <div className="container mx-auto max-w-2xl">
-        <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
-        </Button>
+        <div className="flex gap-2 mb-6">
+          <Button variant="ghost" onClick={() => navigate(-1)}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+          <Button variant="ghost" onClick={() => navigate('/public-events')}>
+            <Home className="w-4 h-4 mr-2" />
+            Home
+          </Button>
+        </div>
 
         <div className="space-y-6">
           <div id="ticket-card">
@@ -135,9 +166,10 @@ const TicketViewer = () => {
                   variant="outline" 
                   className="w-full" 
                   onClick={handleDownload}
+                  disabled={downloading}
                 >
                   <Download className="w-4 h-4 mr-2" />
-                  Download
+                  {downloading ? 'Generating...' : 'Download'}
                 </Button>
                 <Button 
                   variant="outline" 
@@ -148,6 +180,10 @@ const TicketViewer = () => {
                   Share
                 </Button>
               </div>
+              
+              <p className="text-xs text-center text-muted-foreground">
+                💡 Tip: You can also take a screenshot to save your ticket
+              </p>
               
               <SocialShare 
                 url={window.location.href}

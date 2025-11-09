@@ -7,11 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SocialShare } from '@/components/SocialShare';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Calendar, MapPin, Download, ArrowLeft, DollarSign, Ticket, Clock, HelpCircle, Image as ImageIcon } from 'lucide-react';
+import { Calendar, MapPin, Download, ArrowLeft, DollarSign, Ticket, Clock, HelpCircle, Image as ImageIcon, CalendarPlus, Users, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { TicketCard } from '@/components/TicketCard';
+import { downloadICS } from '@/utils/calendar';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const claimSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100),
@@ -54,6 +56,18 @@ const PublicEvent = () => {
     
     try {
       const validated = claimSchema.parse(formData);
+      
+      // Check capacity
+      if (event.capacity) {
+        const { data: availabilityData } = await supabase
+          .rpc('check_ticket_availability', { event_id_input: eventId });
+        
+        if (!availabilityData) {
+          toast.error('Sorry, this event is sold out!');
+          return;
+        }
+      }
+      
       setLoading(true);
       
       // Generate ticket code
@@ -109,6 +123,11 @@ const PublicEvent = () => {
     toast.info('To save your ticket, take a screenshot or use the share options below');
   };
 
+  const handleAddToCalendar = () => {
+    downloadICS(event);
+    toast.success('Event added to your calendar!');
+  };
+
   if (!event) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -144,17 +163,44 @@ const PublicEvent = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="flex items-center gap-2">
-              <MapPin className="w-5 h-5" />
-              <a 
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.venue)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                {event.venue}
-              </a>
-            </p>
+            <div className="flex flex-wrap gap-4">
+              <p className="flex items-center gap-2">
+                <MapPin className="w-5 h-5" />
+                <a 
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.venue)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  {event.venue}
+                </a>
+              </p>
+              {event.capacity && (
+                <p className="flex items-center gap-2 text-muted-foreground">
+                  <Users className="w-5 h-5" />
+                  {event.tickets_issued} / {event.capacity} tickets claimed
+                </p>
+              )}
+            </div>
+
+            {event.capacity && event.tickets_issued >= event.capacity && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  This event is sold out. No more tickets available.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <Button 
+              variant="outline" 
+              onClick={handleAddToCalendar}
+              className="w-full sm:w-auto"
+            >
+              <CalendarPlus className="w-4 h-4 mr-2" />
+              Add to Calendar
+            </Button>
+
             {event.description && (
               <p className="text-muted-foreground">{event.description}</p>
             )}
@@ -268,6 +314,11 @@ const PublicEvent = () => {
               <p className="text-2xl font-bold mb-2">
                 {event.ticket_price} {event.currency}
               </p>
+              {event.capacity && (
+                <p className="text-sm text-muted-foreground mb-2">
+                  {event.capacity - event.tickets_issued} tickets remaining
+                </p>
+              )}
               <p className="text-muted-foreground mb-6">
                 Online ticket purchase will be available soon
               </p>
@@ -277,11 +328,25 @@ const PublicEvent = () => {
               </Button>
             </CardContent>
           </Card>
+        ) : event.capacity && event.tickets_issued >= event.capacity ? (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-lg">
+              This event is sold out. All tickets have been claimed.
+            </AlertDescription>
+          </Alert>
         ) : !claimedTicket ? (
           <Card>
             <CardHeader>
               <CardTitle>Claim Your Free Ticket</CardTitle>
-              <CardDescription>Enter your details to receive your ticket</CardDescription>
+              <CardDescription>
+                Enter your details to receive your ticket
+                {event.capacity && (
+                  <span className="block mt-2 text-primary">
+                    {event.capacity - event.tickets_issued} tickets remaining
+                  </span>
+                )}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleClaim} className="space-y-4">

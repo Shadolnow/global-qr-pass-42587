@@ -1,1 +1,7 @@
 project_id = "dmksigdpcbdvyejtedju"
+
+[functions.admin-list-users]
+verify_jwt = true
+
+[functions.admin-manage-users]
+verify_jwt = true

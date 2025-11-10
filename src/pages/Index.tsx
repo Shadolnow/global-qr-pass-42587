@@ -1,22 +1,39 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/components/AuthProvider';
 import { Button } from '@/components/ui/button';
-import { Ticket, QrCode, Sparkles, LogOut, ExternalLink } from 'lucide-react';
+import { Ticket, QrCode, Sparkles, LogOut, ExternalLink, Shield } from 'lucide-react';
 import heroImage from '@/assets/eventtix-hero.jpg';
 import { QRCodeSVG } from 'qrcode.react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (!user) {
       navigate('/auth');
+    } else {
+      checkAdminStatus();
     }
   }, [user, navigate]);
+
+  const checkAdminStatus = async () => {
+    if (!user) return;
+    try {
+      const { data } = await supabase.rpc('has_role', {
+        _user_id: user.id,
+        _role: 'admin',
+      });
+      setIsAdmin(data || false);
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+    }
+  };
 
   if (!user) return null;
 
@@ -30,6 +47,14 @@ const Index = () => {
             <span className="text-2xl font-bold text-gradient-cyber">EventTix</span>
           </div>
           <nav className="flex items-center gap-4">
+            {isAdmin && (
+              <Link to="/dashboard">
+                <Button variant="outline" className="border-primary/50 hover:border-primary">
+                  <Shield className="w-4 h-4 mr-2" />
+                  Admin
+                </Button>
+              </Link>
+            )}
             <Link to="/events">
               <Button variant="ghost">My Events</Button>
             </Link>

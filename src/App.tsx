@@ -15,6 +15,7 @@ import TicketViewer from "./pages/TicketViewer";
 import PublicEvent from "./pages/PublicEvent";
 import PublicEvents from "./pages/PublicEvents";
 import Dashboard from "./pages/Dashboard";
+import AdminEvents from "./pages/AdminEvents";
 import EventCustomizationPage from "./pages/EventCustomizationPage";
 import NotFound from "./pages/NotFound";
 
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/scan" element={<Scan />} />
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/admin/events" element={<AdminEvents />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -135,8 +135,8 @@ const Index = () => {
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
               <div className="relative">
-                <QRCodeSVG 
-                  value={`${PUBLIC_BASE_URL}/public-events`}
+            <QRCodeSVG
+              value={`${PUBLIC_BASE_URL}/public-events`}
                   size={200}
                   level="H"
                   includeMargin
@@ -154,8 +154,8 @@ const Index = () => {
                 Anyone can scan this QR code to view all your events
               </p>
               <p className="text-center text-sm mt-1">
-                <a
-                  href={`${PUBLIC_BASE_URL}/public-events`}
+          <a
+            href={`${PUBLIC_BASE_URL}/public-events`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-cyan-300 underline underline-offset-4 hover:text-cyan-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-sm"
@@ -168,7 +168,7 @@ const Index = () => {
                   variant="outline" 
                   className="flex-1"
                   onClick={() => {
-                    const url = `${PUBLIC_BASE_URL}/public-events`;
+          const url = `${PUBLIC_BASE_URL}/public-events`;
                     navigator.clipboard.writeText(url);
                     toast.success('Link copied to clipboard!');
                   }}
@@ -179,7 +179,7 @@ const Index = () => {
                   variant="default"
                   className="flex-1"
                   onClick={() => {
-                    const url = `${PUBLIC_BASE_URL}/public-events`;
+          const url = `${PUBLIC_BASE_URL}/public-events`;
                     window.open(url, '_blank', 'noopener');
                   }}
                 >

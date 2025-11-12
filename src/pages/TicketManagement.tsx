@@ -280,7 +280,7 @@ const TicketManagement = () => {
             </TabsContent>
 
               <TabsContent value="attendees">
-                <AttendeeList tickets={tickets} eventTitle={event.title} />
+                <AttendeeList tickets={tickets} eventTitle={event.title} eventId={eventId!} />
               </TabsContent>
 
               <TabsContent value="customize">

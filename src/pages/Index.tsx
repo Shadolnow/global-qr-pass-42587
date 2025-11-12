@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/components/AuthProvider';
 import { Button } from '@/components/ui/button';
 import { Ticket, QrCode, Sparkles, LogOut, ExternalLink, Shield } from 'lucide-react';
 import heroImage from '@/assets/eventtix-hero.jpg';
+import eventtixLogoUrl from '@/assets/eventtix-logo.svg';
 import { QRCodeSVG } from 'qrcode.react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
@@ -13,6 +14,8 @@ const Index = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
+  const PUBLIC_BASE_URL = (import.meta as any).env?.VITE_PUBLIC_SITE_URL || window.location.origin;
+  const qrRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -131,21 +134,41 @@ const Index = () => {
               <CardTitle className="text-center text-2xl">Share Public Events Page</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
-              <QRCodeSVG 
-                value={`${window.location.origin}/public-events`}
-                size={200}
-                level="H"
-                className="border-4 border-primary/20 rounded-lg p-2 bg-white"
-              />
+              <div className="relative">
+                <QRCodeSVG 
+                  value={`${PUBLIC_BASE_URL}/public-events`}
+                  size={200}
+                  level="H"
+                  includeMargin
+                  className="border-4 border-primary/20 rounded-lg p-2 bg-white"
+                  ref={qrRef as any}
+                />
+                {/* Centered overlay logo with white rounded backing to preserve QR module contrast */}
+                <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                  <div className="rounded-lg bg-white/95 p-1 shadow-sm">
+                    <img src={eventtixLogoUrl} alt="EventTix logo" className="h-12 w-12 object-contain" />
+                  </div>
+                </div>
+              </div>
               <p className="text-center text-sm text-muted-foreground">
                 Anyone can scan this QR code to view all your events
+              </p>
+              <p className="text-center text-sm mt-1">
+                <a
+                  href={`${PUBLIC_BASE_URL}/public-events`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-cyan-300 underline underline-offset-4 hover:text-cyan-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-sm"
+                >
+                  Click here to go to the event page
+                </a>
               </p>
               <div className="flex gap-2 w-full">
                 <Button 
                   variant="outline" 
                   className="flex-1"
                   onClick={() => {
-                    const url = `${window.location.origin}/public-events`;
+                    const url = `${PUBLIC_BASE_URL}/public-events`;
                     navigator.clipboard.writeText(url);
                     toast.success('Link copied to clipboard!');
                   }}
@@ -158,6 +181,99 @@ const Index = () => {
                     View Page
                   </Button>
                 </Link>
+              </div>
+              {/* Download controls: SVG, PNG, PDF */}
+              <div className="flex gap-2 w-full mt-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    const svgEl = qrRef.current;
+                    if (!svgEl) return;
+                    const serializer = new XMLSerializer();
+                    const svgString = serializer.serializeToString(svgEl);
+                    const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'eventtix-public-events-qr.svg';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  Download SVG
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={async () => {
+                    const svgEl = qrRef.current;
+                    if (!svgEl) return;
+                    const serializer = new XMLSerializer();
+                    const svgString = serializer.serializeToString(svgEl);
+                    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+                    const url = URL.createObjectURL(svgBlob);
+                    const img = new Image();
+                    img.onload = () => {
+                      const canvas = document.createElement('canvas');
+                      // Add 10% quiet zone around exported PNG
+                      const qSize = 220; // approximate drawing size
+                      const quiet = Math.round(qSize * 0.10);
+                      canvas.width = qSize + quiet * 2;
+                      canvas.height = qSize + quiet * 2;
+                      const ctx = canvas.getContext('2d')!;
+                      ctx.fillStyle = '#ffffff';
+                      ctx.fillRect(0, 0, canvas.width, canvas.height);
+                      ctx.drawImage(img, quiet, quiet, qSize, qSize);
+                      const pngUrl = canvas.toDataURL('image/png');
+                      const a = document.createElement('a');
+                      a.href = pngUrl;
+                      a.download = 'eventtix-public-events-qr.png';
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    };
+                    img.onerror = () => URL.revokeObjectURL(url);
+                    img.src = url;
+                  }}
+                >
+                  Download PNG
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={async () => {
+                    try {
+                      const { jsPDF } = await import('jspdf');
+                      const svgEl = qrRef.current;
+                      if (!svgEl) return;
+                      const serializer = new XMLSerializer();
+                      const svgString = serializer.serializeToString(svgEl);
+                      const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+                      const url = URL.createObjectURL(svgBlob);
+                      const img = new Image();
+                      img.onload = () => {
+                        const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+                        const pageW = pdf.internal.pageSize.getWidth();
+                        const qSize = 300; // printed size in points
+                        const quiet = Math.round(qSize * 0.10);
+                        const x = (pageW - (qSize + quiet * 2)) / 2;
+                        // Draw white background (quiet zone)
+                        pdf.setFillColor(255, 255, 255);
+                        pdf.rect(x, 72, qSize + quiet * 2, qSize + quiet * 2, 'F');
+                        pdf.addImage(img, 'PNG', x + quiet, 72 + quiet, qSize, qSize);
+                        pdf.text('EventTix – Public Events QR', x, 72 + qSize + quiet * 2 + 24);
+                        pdf.save('eventtix-public-events-qr.pdf');
+                        URL.revokeObjectURL(url);
+                      };
+                      img.onerror = () => URL.revokeObjectURL(url);
+                      img.src = url;
+                    } catch (e) {
+                      toast.error('PDF export requires jspdf. Please run: npm install jspdf');
+                    }
+                  }}
+                >
+                  Download PDF
+                </Button>
               </div>
             </CardContent>
           </Card>

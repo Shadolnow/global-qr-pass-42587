@@ -69,30 +69,31 @@ const PublicEvent = () => {
       }
       
       setLoading(true);
-      
-      // Generate cryptographically secure ticket code
-      const ticketCode = `${crypto.randomUUID().replace(/-/g, '').substring(0, 8).toUpperCase()}-${crypto.randomUUID().replace(/-/g, '').substring(0, 8).toUpperCase()}`;
-      
-      const { data: ticket, error } = await supabase
-        .from('tickets')
-        .insert({
-          event_id: eventId,
-          attendee_name: validated.name,
-          attendee_phone: validated.phone,
-          attendee_email: validated.email.toLowerCase(),
-          ticket_code: ticketCode
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
+      // Call secure Edge Function that enforces rate limiting and per-email constraints
+      const { data, error } = await (supabase as any).functions.invoke('public-claim-ticket', {
+        body: {
+          eventId,
+          name: validated.name,
+          email: validated.email.toLowerCase(),
+          phone: validated.phone,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data || !data.ticket) {
+        throw new Error('Failed to issue ticket');
+      }
+
+      const ticket = data.ticket;
       setClaimedTicket({ ...ticket, events: event });
       toast.success('Ticket claimed successfully!');
       
       // Open WhatsApp - provide alternative if blocked
       const ticketUrl = `${window.location.origin}/ticket/${ticket.id}`;
-      const message = `🎫 Your ticket for ${event.title}\n\nEvent: ${event.title}\nDate: ${format(new Date(event.event_date), 'PPP')}\nVenue: ${event.venue}\nTicket Code: ${ticketCode}\n\nView your ticket: ${ticketUrl}`;
+      const message = `🎫 Your ticket for ${event.title}\n\nEvent: ${event.title}\nDate: ${format(new Date(event.event_date), 'PPP')}\nVenue: ${event.venue}\nTicket Code: ${ticket.ticket_code}\n\nView your ticket: ${ticketUrl}`;
       
       // Copy to clipboard as fallback
       navigator.clipboard.writeText(`${message}\n\nManually open WhatsApp and send this to ${validated.phone}`);
@@ -113,8 +114,18 @@ const PublicEvent = () => {
         toast.error(error.errors[0].message);
       } else {
         console.error('Ticket claim failed:', error);
-        const msg = (error && (error.message || error.hint || error.details)) || 'Failed to claim ticket';
-        toast.error(msg);
+        // Friendly, non-leaky messages
+        const message = typeof error?.message === 'string' ? error.message : 'Failed to claim ticket';
+        // Map known edge function responses to friendly messages if available
+        if (message.includes('rate_limited')) {
+          toast.error('Too many requests. Please wait a few seconds and try again.');
+        } else if (message.includes('duplicate_email')) {
+          toast.error('A ticket has already been issued for this email for this event.');
+        } else if (message.toLowerCase().includes('sold out')) {
+          toast.error('Sorry, this event is sold out!');
+        } else {
+          toast.error('Unable to issue ticket at the moment. Please try again later.');
+        }
       }
     } finally {
       setLoading(false);

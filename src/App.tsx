@@ -18,6 +18,7 @@ import Dashboard from "./pages/Dashboard";
 import AdminEvents from "./pages/AdminEvents";
 import EventCustomizationPage from "./pages/EventCustomizationPage";
 import NotFound from "./pages/NotFound";
+import AuthRoute from "@/components/RouteGuards/AuthRoute";
 
 const queryClient = new QueryClient();
 
@@ -38,7 +39,7 @@ const App = () => (
             <Route path="/ticket/:ticketId" element={<TicketViewer />} />
             <Route path="/e/:eventId" element={<PublicEvent />} />
             <Route path="/public-events" element={<PublicEvents />} />
-            <Route path="/scan" element={<Scan />} />
+            <Route path="/scan" element={<AuthRoute><Scan /></AuthRoute>} />
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/admin/events" element={<AdminEvents />} />

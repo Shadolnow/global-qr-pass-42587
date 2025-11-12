@@ -1,10 +1,12 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { computeIsAdmin } from '@/utils/admin';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
+  isAdmin: boolean;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -15,20 +17,27 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
-        setUser(session?.user ?? null);
+        const u = session?.user ?? null;
+        setUser(u);
+        // refresh admin flag when auth state changes
+        computeIsAdmin(u).then(setIsAdmin).catch(() => setIsAdmin(false));
       }
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
-      setUser(session?.user ?? null);
+      const u = session?.user ?? null;
+      setUser(u);
+      const admin = await computeIsAdmin(u);
+      setIsAdmin(admin);
     });
 
     return () => subscription.unsubscribe();
@@ -57,7 +66,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, isAdmin, signUp, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
@@ -66,7 +75,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    // Gracefully handle missing provider in development to avoid hard crashes
+    if (import.meta.env.DEV) {
+      console.warn('useAuth was called outside of an <AuthProvider>. Returning a safe fallback.');
+    }
+    return {
+      user: null,
+      session: null,
+      isAdmin: false,
+      signUp: async () => ({ error: new Error('AuthProvider is not mounted') }),
+      signIn: async () => ({ error: new Error('AuthProvider is not mounted') }),
+      signOut: async () => {}
+    } as AuthContextType;
   }
   return context;
 };

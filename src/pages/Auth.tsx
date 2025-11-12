@@ -8,15 +8,24 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
+import { resolveLoginIdentifier, registerUsernameEmail } from '@/utils/auth';
 
-const authSchema = z.object({
+const loginSchema = z.object({
+  identifier: z.string().min(1, 'Please enter email or username'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
+const signupSchema = z.object({
   email: z.string().email('Invalid email address'),
+  username: z.string().min(3, 'Username must be at least 3 characters').regex(/^[a-zA-Z0-9_\.\-]+$/, 'Use letters, numbers, underscores, dots or dashes'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [identifier, setIdentifier] = useState('');
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [accountType, setAccountType] = useState<'individual' | 'company'>('individual');
   const [companyName, setCompanyName] = useState('');
@@ -30,7 +39,9 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const validation = authSchema.safeParse({ email, password });
+      const validation = isLogin
+        ? loginSchema.safeParse({ identifier, password })
+        : signupSchema.safeParse({ email, username, password });
       if (!validation.success) {
         toast({
           variant: 'destructive',
@@ -50,7 +61,8 @@ const Auth = () => {
       }
 
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const resolvedEmail = await resolveLoginIdentifier(identifier);
+        const { error } = await supabase.auth.signInWithPassword({ email: resolvedEmail, password });
         if (error) throw error;
         toast({ title: 'Welcome back!', description: 'You have successfully logged in.' });
         navigate('/');
@@ -64,10 +76,20 @@ const Auth = () => {
               account_type: accountType,
               company_name: accountType === 'company' ? companyName : null,
               plan_type: planType,
+              username,
             },
           },
         });
         if (error) throw error;
+        const userRes = await supabase.auth.getUser();
+        const userId = userRes.data.user?.id;
+        if (userId) {
+          try {
+            await registerUsernameEmail(username, email, userId);
+          } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Warning', description: `Could not register username mapping: ${e.message}` });
+          }
+        }
         toast({ title: 'Account created!', description: 'Please check your email to verify your account.' });
         navigate('/');
       }
@@ -83,13 +105,26 @@ const Auth = () => {
       <Card className="w-full max-w-md p-8 space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-gradient-cyber">EventTix</h1>
-          <p className="text-muted-foreground">{isLogin ? 'Sign in to your account' : 'Create your account'}</p>
+          <p className="text-muted-foreground">{isLogin ? 'Sign in to your account (email or username)' : 'Create your account'}</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@example.com" />
-          </div>
+          {isLogin ? (
+            <div className="space-y-2">
+              <Label htmlFor="identifier">Email or Username</Label>
+              <Input id="identifier" type="text" value={identifier} onChange={(e) => setIdentifier(e.target.value)} required placeholder="you@example.com or your_username" />
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@example.com" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input id="username" type="text" value={username} onChange={(e) => setUsername(e.target.value)} required placeholder="your_username" />
+              </div>
+            </>
+          )}
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••••" />

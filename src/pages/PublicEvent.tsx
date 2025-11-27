@@ -493,7 +493,18 @@ const PublicEvent = () => {
                   </div>
 
                   <p className="text-xs text-center text-muted-foreground">
-                    Didn't receive code? <button className="text-primary hover:underline" onClick={() => toast.info("Please request a new code by going back.")}>Resend</button>
+                    Didn't receive code? <button
+                      type="button"
+                      className="text-primary hover:underline disabled:opacity-50"
+                      onClick={async () => {
+                        toast.info("Resending code...");
+                        const { error } = await supabase.auth.signInWithOtp({ phone: formData.phone });
+                        if (error) toast.error(error.message);
+                        else toast.success("Code resent!");
+                      }}
+                    >
+                      Resend
+                    </button>
                   </p>
                 </div>
               )}

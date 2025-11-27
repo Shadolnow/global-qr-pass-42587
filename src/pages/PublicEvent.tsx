@@ -77,30 +77,28 @@ const PublicEvent = () => {
         }
       }
 
-      // Send OTP via our custom API
-      const response = await fetch('/api/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: validated.email })
+      // Send real OTP via Supabase Auth (Email)
+      const { error } = await supabase.auth.signInWithOtp({
+        email: validated.email,
+        options: {
+          shouldCreateUser: true,
+        }
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        toast.error(data.error || 'Failed to send OTP');
+      if (error) {
+        toast.error(error.message);
         setLoading(false);
         return;
       }
 
       setShowOtpInput(true);
-      toast.success(`Verification code sent to ${validated.email}`);
-      setLoading(false);
+      toast.success(`OTP sent to ${validated.email}`);
 
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
       } else {
-        toast.error('Failed to send verification code');
+        toast.error('Failed to send OTP. Please check your email.');
         console.error(error);
       }
       setLoading(false);
@@ -110,20 +108,21 @@ const PublicEvent = () => {
   const verifyAndClaim = async () => {
     setLoading(true);
     try {
-      // Verify OTP via our custom API
-      const verifyResponse = await fetch('/api/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email,
-          otp: otp
-        })
+      // Verify OTP (Email)
+      const { data: { session }, error: verifyError } = await supabase.auth.verifyOtp({
+        email: formData.email,
+        token: otp,
+        type: 'email',
       });
 
-      const verifyData = await verifyResponse.json();
+      if (verifyError) {
+        toast.error(verifyError.message || "Invalid OTP");
+        setLoading(false);
+        return;
+      }
 
-      if (!verifyResponse.ok) {
-        toast.error(verifyData.error || "Invalid verification code");
+      if (!session) {
+        toast.error("Verification failed. Please try again.");
         setLoading(false);
         return;
       }
@@ -191,27 +190,6 @@ const PublicEvent = () => {
       toast.error('Failed to claim ticket: ' + error.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    try {
-      toast.info("Resending code...");
-      const response = await fetch('/api/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: formData.email })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        toast.error(data.error || 'Failed to resend code');
-      } else {
-        toast.success("Code resent to email!");
-      }
-    } catch (error) {
-      toast.error("Failed to resend code");
     }
   };
 
@@ -470,7 +448,7 @@ const PublicEvent = () => {
                       maxLength={255}
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      We'll send a verification code to this email
+                      We'll send your ticket to this email
                     </p>
                   </div>
                   <div>
@@ -485,19 +463,19 @@ const PublicEvent = () => {
                     />
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? 'Sending Code...' : 'Send Verification Code'}
+                    {loading ? 'Sending OTP...' : 'Verify & Claim Ticket'}
                   </Button>
                 </form>
               ) : (
                 <div className="space-y-6">
                   <div className="text-center space-y-2">
-                    <h3 className="font-semibold text-lg">Verify Your Email</h3>
+                    <h3 className="font-semibold text-lg">Verify Email Address</h3>
                     <p className="text-sm text-muted-foreground">
                       Enter the 6-digit code sent to {formData.email}
                     </p>
-                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-md p-3 text-xs text-blue-600 dark:text-blue-400">
-                      <p className="font-semibold">📧 Check your email</p>
-                      <p>A 6-digit verification code has been sent to your inbox. It will expire in 10 minutes.</p>
+                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-md p-3 text-xs text-yellow-600 dark:text-yellow-400">
+                      <p className="font-semibold">⚠️ Important:</p>
+                      <p>If your email contains a "Log In" link, please look for the <strong>6-digit code</strong> in the email subject or body. Do not click the link.</p>
                     </div>
                   </div>
 
@@ -539,7 +517,12 @@ const PublicEvent = () => {
                     Didn't receive code? <button
                       type="button"
                       className="text-primary hover:underline disabled:opacity-50"
-                      onClick={handleResendOtp}
+                      onClick={async () => {
+                        toast.info("Resending code...");
+                        const { error } = await supabase.auth.signInWithOtp({ email: formData.email });
+                        if (error) toast.error(error.message);
+                        else toast.success("Code resent to email!");
+                      }}
                     >
                       Resend
                     </button>

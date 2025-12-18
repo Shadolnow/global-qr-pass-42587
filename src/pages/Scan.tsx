@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Camera, CheckCircle2, XCircle, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Camera, CheckCircle2, XCircle, BarChart3, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from '@/components/AuthProvider';
@@ -34,16 +34,16 @@ const Scan = () => {
     const audioContext = new AudioContext();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
-    
+
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
-    
+
     oscillator.frequency.value = 800;
     oscillator.type = 'sine';
-    
+
     gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-    
+
     oscillator.start(audioContext.currentTime);
     oscillator.stop(audioContext.currentTime + 0.3);
   };
@@ -52,16 +52,16 @@ const Scan = () => {
     const audioContext = new AudioContext();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
-    
+
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
-    
+
     oscillator.frequency.value = 200;
     oscillator.type = 'sawtooth';
-    
+
     gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
-    
+
     oscillator.start(audioContext.currentTime);
     oscillator.stop(audioContext.currentTime + 0.4);
   };
@@ -70,7 +70,7 @@ const Scan = () => {
     // Validate ticket code format
     const TICKET_CODE_PATTERN = /^[A-Z0-9]{8}-[A-Z0-9]{8}$/i;
     const MAX_LENGTH = 50;
-    
+
     if (!ticketCode || ticketCode.length > MAX_LENGTH || !TICKET_CODE_PATTERN.test(ticketCode)) {
       playErrorSound();
       toast.error('Invalid ticket code format');
@@ -121,11 +121,52 @@ const Scan = () => {
           description: `Validated on ${new Date(ticketTyped.validated_at).toLocaleString()}`,
           duration: 3000,
         });
-        setLastScan({ 
-          success: false, 
-          message: 'Already validated', 
+        setLastScan({
+          success: false,
+          message: 'Already validated',
           ticket: ticketTyped,
-          validatedAt: ticketTyped.validated_at 
+          validatedAt: ticketTyped.validated_at
+        });
+        return;
+      }
+
+      // CHECK FOR EXPIRATION
+      if (ticketTyped.payment_status === 'expired') {
+        playErrorSound();
+        toast.error('Ticket Expired', { description: 'Booking window (24h) has passed.' });
+        setLastScan({
+          success: false,
+          message: 'Ticket Expired (Unpaid > 24h)',
+          ticket: ticketTyped
+        });
+        return;
+      }
+
+      // CHECK PAYMENT STATUS
+      if (ticketTyped.payment_status === 'pending' || ticketTyped.payment_status === 'pay_at_venue') {
+        // Double Check Time on Client just in case it wasn't auto-expired yet
+        const createdAt = new Date(ticketTyped.created_at);
+        const now = new Date();
+        const diffHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+
+        if (diffHours > 24) {
+          playErrorSound();
+          toast.error('Ticket Expired', { description: 'Booking window (24h) has passed.' });
+          setLastScan({
+            success: false,
+            message: 'Ticket Expired (Unpaid > 24h)',
+            ticket: ticketTyped
+          });
+          return;
+        }
+
+        playSuccessSound(); // Found it, but needs action
+        toast.info('Payment Required', { description: 'Collect cash and confirm to validate.' });
+        setLastScan({
+          success: true,
+          message: 'Payment Required',
+          ticket: ticketTyped,
+          requiresPayment: true
         });
         return;
       }
@@ -142,10 +183,10 @@ const Scan = () => {
         description: `${ticketTyped.attendee_name} - ${ticketTyped.events.title}`,
         duration: 4000,
       });
-      
-      setLastScan({ 
-        success: true, 
-        message: 'Valid ticket', 
+
+      setLastScan({
+        success: true,
+        message: 'Valid ticket',
         ticket: ticketTyped,
         validatedAt: new Date().toISOString()
       });
@@ -153,11 +194,56 @@ const Scan = () => {
     } catch (error: any) {
       console.error('Ticket validation error', error);
       playErrorSound();
-      // Do not expose database internals to the user
-      toast.error('Validation failed', {
-        description: 'Please try again or contact support.',
-      });
+      toast.error('Validation failed');
       setLastScan({ success: false, message: 'Validation error', code: ticketCode });
+    }
+  };
+
+  const confirmPaymentAndValidate = async () => {
+    if (!lastScan?.ticket?.id) return;
+
+    try {
+      const { error } = await (supabase as any)
+        .from('tickets')
+        .update({
+          is_validated: true,
+          validated_at: new Date().toISOString(),
+          payment_status: 'paid',
+          payment_ref_id: 'CASH_AT_VENUE'
+        })
+        .eq('id', lastScan.ticket.id);
+
+      if (error) throw error;
+
+      toast.success('Payment Confirmed & Ticket Validated!');
+      playSuccessSound();
+
+      setLastScan({
+        ...lastScan,
+        message: 'Valid ticket',
+        requiresPayment: false,
+        validatedAt: new Date().toISOString()
+      });
+
+      // Send Email Confirmation
+      const ticket = lastScan.ticket;
+      await fetch('/api/send-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: ticket.attendee_email,
+          ticketCode: ticket.ticket_code,
+          eventTitle: ticket.events.title,
+          eventDate: new Date(ticket.events.event_date).toLocaleDateString(),
+          venue: ticket.events.venue,
+          ticketId: ticket.id,
+          attendeeName: ticket.attendee_name
+        })
+      });
+
+    } catch (error: any) {
+      console.error("Payment confirm error", error);
+      toast.error("Failed to update ticket");
     }
   };
 
@@ -205,7 +291,7 @@ const Scan = () => {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
-        
+
         <Card className="border-2 border-primary/20 shadow-neon-cyan mb-6">
           <CardHeader>
             <CardTitle className="text-3xl text-gradient-cyber">QR Scanner</CardTitle>
@@ -214,12 +300,12 @@ const Scan = () => {
           <CardContent className="space-y-6">
             {/* QR Scanner Container */}
             <div className="relative">
-              <div 
-                id="qr-reader" 
+              <div
+                id="qr-reader"
                 className={`w-full rounded-lg overflow-hidden ${isScanning ? 'block' : 'hidden'}`}
                 style={{ minHeight: '300px' }}
               />
-              
+
               {!isScanning && (
                 <div className="flex flex-col items-center justify-center py-12 space-y-4">
                   <Camera className="w-16 h-16 text-muted-foreground" />
@@ -258,16 +344,20 @@ const Scan = () => {
 
         {/* Last Scan Result */}
         {lastScan && (
-          <Card className={`border-2 ${lastScan.success ? 'border-green-500/50 bg-green-500/5' : 'border-red-500/50 bg-red-500/5'}`}>
+          <Card className={`border-2 ${lastScan.success ? (lastScan.requiresPayment ? 'border-yellow-500/50 bg-yellow-500/5' : 'border-green-500/50 bg-green-500/5') : 'border-red-500/50 bg-red-500/5'}`}>
             <CardContent className="pt-6">
               <div className="flex items-start gap-4">
                 {lastScan.success ? (
-                  <CheckCircle2 className="w-8 h-8 text-green-500 flex-shrink-0 mt-1" />
+                  lastScan.requiresPayment ? (
+                    <AlertCircle className="w-8 h-8 text-yellow-500 flex-shrink-0 mt-1" />
+                  ) : (
+                    <CheckCircle2 className="w-8 h-8 text-green-500 flex-shrink-0 mt-1" />
+                  )
                 ) : (
                   <XCircle className="w-8 h-8 text-red-500 flex-shrink-0 mt-1" />
                 )}
                 <div className="flex-1">
-                  <h3 className={`text-xl font-bold mb-2 ${lastScan.success ? 'text-green-500' : 'text-red-500'}`}>
+                  <h3 className={`text-xl font-bold mb-2 ${lastScan.success ? (lastScan.requiresPayment ? 'text-yellow-500' : 'text-green-500') : 'text-red-500'}`}>
                     {lastScan.message}
                   </h3>
                   {lastScan.ticket && (
@@ -276,6 +366,12 @@ const Scan = () => {
                       <p><strong>Email:</strong> {lastScan.ticket.attendee_email}</p>
                       <p><strong>Event:</strong> {lastScan.ticket.events.title}</p>
                       <p><strong>Code:</strong> {lastScan.ticket.ticket_code}</p>
+                      {lastScan.ticket.ticket_tiers && (
+                        <p><strong>Tier:</strong> {lastScan.ticket.ticket_tiers.name} - ₹{lastScan.ticket.ticket_tiers.price}</p>
+                      )}
+                      {lastScan.ticket.payment_status && (
+                        <p className="uppercase"><strong>Payment:</strong> {lastScan.ticket.payment_status}</p>
+                      )}
                       {lastScan.validatedAt && (
                         <p className="text-muted-foreground">
                           <strong>Validated:</strong> {new Date(lastScan.validatedAt).toLocaleString()}
@@ -285,6 +381,17 @@ const Scan = () => {
                   )}
                   {lastScan.code && !lastScan.ticket && (
                     <p className="text-sm text-muted-foreground">Code: {lastScan.code}</p>
+                  )}
+
+                  {lastScan.requiresPayment && (
+                    <div className="mt-4">
+                      <Button
+                        onClick={confirmPaymentAndValidate}
+                        className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold"
+                      >
+                        Collect Cash & Validate
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>

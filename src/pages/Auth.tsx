@@ -96,19 +96,35 @@ const Auth = () => {
       }
 
       if (isLogin) {
-        const { data, error } = await supabase.auth.signInWithPassword({ 
-          email: email.trim(), 
-          password 
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password
         });
-        
+
         if (error) throw error;
-        
+
         if (data.user) {
-          toast({ 
-            title: 'Welcome back!', 
-            description: 'You have successfully logged in.' 
+          // Check for active business subscription
+          const { data: subscription } = await supabase
+            .from('business_subscriptions')
+            .select('*')
+            .eq('user_id', data.user.id)
+            .in('status', ['active', 'pending'])
+            .maybeSingle();
+
+          toast({
+            title: 'Welcome back!',
+            description: 'You have successfully logged in.'
           });
-          navigate('/dashboard');
+
+          // Route based on subscription status
+          if (subscription && subscription.status === 'active') {
+            navigate('/business-dashboard');
+          } else if (subscription && subscription.status === 'pending') {
+            navigate('/business-signup?status=pending');
+          } else {
+            navigate('/dashboard');
+          }
         }
       } else {
         const { data, error } = await supabase.auth.signUp({
@@ -123,15 +139,15 @@ const Auth = () => {
             },
           },
         });
-        
+
         if (error) throw error;
-        
+
         if (data.user) {
           // Check if email confirmation is required
           if (data.session) {
-            toast({ 
-              title: 'Account created!', 
-              description: 'Your account has been created successfully.' 
+            toast({
+              title: 'Account created!',
+              description: 'Your account has been created successfully.'
             });
             navigate('/dashboard');
           } else {
@@ -143,20 +159,20 @@ const Auth = () => {
     } catch (error: any) {
       console.error('Authentication error:', error);
       const errorMessage = getUserFriendlyError(error);
-      
+
       // If user already exists, suggest switching to login
       if (error?.message?.includes('User already registered')) {
-        toast({ 
-          variant: 'destructive', 
-          title: 'Account Already Exists', 
-          description: errorMessage 
+        toast({
+          variant: 'destructive',
+          title: 'Account Already Exists',
+          description: errorMessage
         });
         setIsLogin(true); // Auto-switch to login mode
       } else {
-        toast({ 
-          variant: 'destructive', 
-          title: isLogin ? 'Login Failed' : 'Signup Failed', 
-          description: errorMessage 
+        toast({
+          variant: 'destructive',
+          title: isLogin ? 'Login Failed' : 'Signup Failed',
+          description: errorMessage
         });
       }
     } finally {
@@ -224,10 +240,10 @@ const Auth = () => {
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-gradient-cyber">EventTix</h1>
           <p className="text-muted-foreground">
-            {isForgotPassword 
-              ? 'Reset your password' 
-              : isLogin 
-                ? 'Welcome back! Sign in to continue' 
+            {isForgotPassword
+              ? 'Reset your password'
+              : isLogin
+                ? 'Welcome back! Sign in to continue'
                 : 'Create your account to get started'}
           </p>
         </div>

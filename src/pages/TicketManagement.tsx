@@ -41,6 +41,9 @@ const TicketManagement = () => {
     if (!user || !eventId) return;
 
     const fetchEventAndTickets = async () => {
+      // Housekeeping: Expire old tickets
+      await (supabase as any).rpc('expire_unpaid_tickets');
+
       // Fetch event
       const { data: eventData, error: eventError } = await (supabase as any)
         .from('events')
@@ -84,7 +87,7 @@ const TicketManagement = () => {
           if (payload.eventType === 'INSERT') {
             fetchEventAndTickets();
           } else if (payload.eventType === 'UPDATE') {
-            setTickets(prev => 
+            setTickets(prev =>
               prev.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t)
             );
           }
@@ -99,7 +102,7 @@ const TicketManagement = () => {
 
   const generateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const validation = attendeeSchema.safeParse(formData);
     if (!validation.success) {
       toast.error(validation.error.errors[0].message);
@@ -116,24 +119,47 @@ const TicketManagement = () => {
         ticket_code: ticketCode,
         attendee_name: formData.name,
         attendee_email: formData.email,
-        attendee_phone: formData.phone
+        attendee_phone: formData.phone,
+        payment_status: 'paid',
+        payment_ref_id: 'MANUAL_CASH'
       }).select().single();
 
       if (error) throw error;
 
+      // Send Email
+      try {
+        await fetch('/api/send-ticket', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email,
+            ticketCode: ticketCode,
+            eventTitle: event.title,
+            eventDate: new Date(event.event_date).toLocaleDateString(),
+            venue: event.venue,
+            ticketId: ticketData.id,
+            attendeeName: formData.name
+          })
+        });
+        toast.success('Ticket sent to attendee email');
+      } catch (emailErr) {
+        console.error("Email send failed", emailErr);
+        toast.error("Ticket created but email failed to send");
+      }
+
       // Copy ticket link to clipboard - user can share manually
       const ticketUrl = `${window.location.origin}/ticket/${ticketData.id}`;
-      const message = 
+      const message =
         `🎟️ Your ticket for ${event.title}\n\n` +
         `📅 ${new Date(event.event_date).toLocaleString()}\n` +
         `📍 ${event.venue}\n\n` +
         `View your ticket: ${ticketUrl}`;
-      
+
       await navigator.clipboard.writeText(message);
-      toast.success('Ticket generated! Link copied to clipboard - share it with the attendee.', {
+      toast.success('Ticket generated! Link copied & Email Sent.', {
         duration: 5000
       });
-      
+
       setFormData({ name: '', email: '', phone: '' });
       setIsDialogOpen(false);
     } catch (error: any) {
@@ -246,7 +272,7 @@ const TicketManagement = () => {
           </Card>
         ) : (
           <div className="space-y-6">
-            <EventStats 
+            <EventStats
               totalTickets={tickets.length}
               validatedTickets={validatedCount}
               pendingTickets={pendingCount}
@@ -269,24 +295,24 @@ const TicketManagement = () => {
                 </TabsTrigger>
               </TabsList>
 
-            <TabsContent value="tickets">
-              <div className="grid md:grid-cols-2 gap-6">
-                {tickets.map((ticket) => (
-                  <Link key={ticket.id} to={`/ticket/${ticket.id}`}>
-                    <div className="transition-transform hover:scale-105">
-                      <TicketCard ticket={ticket} compact />
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </TabsContent>
+              <TabsContent value="tickets">
+                <div className="grid md:grid-cols-2 gap-6">
+                  {tickets.map((ticket) => (
+                    <Link key={ticket.id} to={`/ticket/${ticket.id}`}>
+                      <div className="transition-transform hover:scale-105">
+                        <TicketCard ticket={ticket} compact />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </TabsContent>
 
               <TabsContent value="attendees">
                 <AttendeeList tickets={tickets} eventTitle={event.title} eventId={eventId!} />
               </TabsContent>
 
               <TabsContent value="customize">
-                <EventCustomization 
+                <EventCustomization
                   eventId={eventId!}
                   userId={user!.id}
                   initialData={{

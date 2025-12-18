@@ -4,30 +4,33 @@ import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Calendar, MapPin, Ticket, QrCode, Share2, ExternalLink, Settings } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Ticket, QrCode, Share2, ExternalLink, Settings, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
+import QRCodeDialog from '@/components/QRCodeDialog';
 
 const Events = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [events, setEvents] = useState<any[]>([]);
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const PUBLIC_BASE_URL = (import.meta as any).env?.VITE_PUBLIC_SITE_URL || window.location.origin;
 
   useEffect(() => {
     if (!user) return;
-    
+
     const fetchEvents = async () => {
       const { data } = await (supabase as any)
         .from('events')
         .select('*')
         .eq('user_id', user.id)
         .order('event_date', { ascending: false });
-      
+
       if (data) setEvents(data);
     };
-    
+
     fetchEvents();
   }, [user]);
 
@@ -38,9 +41,15 @@ const Events = () => {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
-        
-        <h1 className="text-4xl font-bold text-gradient-cyber mb-4">My Events</h1>
-        
+
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+          <h1 className="text-4xl font-bold text-gradient-cyber">My Events</h1>
+          <Button onClick={() => navigate('/global-tickets')} variant="cyber" className="w-full md:w-auto">
+            <Ticket className="w-4 h-4 mr-2" />
+            Global Ticket Database
+          </Button>
+        </div>
+
         {/* Public Events Link Card */}
         <Card className="mb-8 border-2 border-primary/30 bg-gradient-to-r from-card to-card/80">
           <CardContent className="py-6">
@@ -52,7 +61,7 @@ const Events = () => {
                 </p>
               </div>
               <div className="flex gap-2">
-                <Button 
+                <Button
                   variant="outline"
                   onClick={() => {
                     const url = `${PUBLIC_BASE_URL}/public-events`;
@@ -62,7 +71,7 @@ const Events = () => {
                 >
                   Copy Link
                 </Button>
-                <Button 
+                <Button
                   variant="default"
                   onClick={() => {
                     const url = `${PUBLIC_BASE_URL}/public-events`;
@@ -76,7 +85,7 @@ const Events = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {events.map((event) => (
             <Card key={event.id} className="border-2 border-primary/20 hover:border-primary/40 transition-all hover:shadow-neon-cyan">
@@ -92,31 +101,49 @@ const Events = () => {
                   <MapPin className="w-4 h-4" />
                   {event.venue}
                 </p>
-                
+
+
                 {/* Public Event QR Code */}
-                <div className="bg-background/50 border border-border rounded-lg p-4 flex flex-col items-center gap-3">
-                  <p className="text-sm font-medium">Public Event Link</p>
-                  <QRCodeSVG 
-                    value={`${PUBLIC_BASE_URL}/e/${event.id}`}
-                    size={120}
-                    level="H"
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      const url = `${PUBLIC_BASE_URL}/e/${event.id}`;
-                      if (navigator.share) {
-                        navigator.share({ url });
-                      } else {
-                        navigator.clipboard.writeText(url);
-                        toast.success('Link copied to clipboard!');
-                      }
-                    }}
-                  >
-                    <Share2 className="w-4 h-4 mr-2" />
-                    Share Event
-                  </Button>
+                <div className="bg-gradient-to-br from-primary/5 to-accent/5 border-2 border-primary/20 rounded-lg p-4 flex flex-col items-center gap-3 hover:border-primary/40 transition-all">
+                  <p className="text-sm font-medium text-muted-foreground">Public Event QR</p>
+                  <div className="bg-white p-2 rounded-lg shadow-md">
+                    <QRCodeSVG
+                      value={`${PUBLIC_BASE_URL}/e/${event.id}`}
+                      size={100}
+                      level="H"
+                    />
+                  </div>
+                  <div className="flex gap-2 w-full">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => {
+                        setSelectedEvent(event);
+                        setQrDialogOpen(true);
+                      }}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => {
+                        const url = `${PUBLIC_BASE_URL}/e/${event.id}`;
+                        if (navigator.share) {
+                          navigator.share({ url });
+                        } else {
+                          navigator.clipboard.writeText(url);
+                          toast.success('Link copied to clipboard!');
+                        }
+                      }}
+                    >
+                      <Share2 className="w-4 h-4 mr-2" />
+                      Share
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -145,6 +172,16 @@ const Events = () => {
             </Card>
           ))}
         </div>
+
+        {/* QR Code Dialog */}
+        {selectedEvent && (
+          <QRCodeDialog
+            open={qrDialogOpen}
+            onOpenChange={setQrDialogOpen}
+            url={`${PUBLIC_BASE_URL}/e/${selectedEvent.id}`}
+            title={selectedEvent.title}
+          />
+        )}
       </div>
     </div>
   );

@@ -47,9 +47,9 @@ const CreateEvent = () => {
         return;
       }
 
-      setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
+        setImageFile(file);
         setImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
@@ -64,9 +64,8 @@ const CreateEvent = () => {
     try {
       let imageUrl = null;
 
-      // Upload image if selected
+      // Upload event image if selected
       if (imageFile) {
-        // Use random UUID for filename to prevent enumeration
         const fileExt = imageFile.name.split('.').pop()?.toLowerCase();
         const fileName = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
         const { error: uploadError } = await supabase.storage
@@ -142,9 +141,6 @@ const CreateEvent = () => {
                   placeholder="Full address for Google Maps"
                   required
                 />
-                <p className="text-xs text-muted-foreground">
-                  This address will be used to generate a location QR code on tickets
-                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="image">Event Image</Label>
@@ -152,7 +148,7 @@ const CreateEvent = () => {
                   id="image"
                   type="file"
                   accept="image/*"
-                  onChange={handleImageChange}
+                  onChange={(e) => handleImageChange(e, 'event')}
                 />
                 {imagePreview && (
                   <div className="mt-2">
@@ -164,6 +160,7 @@ const CreateEvent = () => {
                   </div>
                 )}
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="eventDate">Event Date</Label>
                 <Input
@@ -175,53 +172,7 @@ const CreateEvent = () => {
                 />
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <select
-                    id="category"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  >
-                    <option value="">Select Category</option>
-                    <option value="Concert">Concert</option>
-                    <option value="Conference">Conference</option>
-                    <option value="Workshop">Workshop</option>
-                    <option value="Meetup">Meetup</option>
-                    <option value="Party">Party</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tags">Tags</Label>
-                  <Input
-                    id="tags"
-                    value={formData.tags}
-                    onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                    placeholder="Music, Tech, VIP (comma separated)"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={4}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="promotionText">Promotion Text</Label>
-                <Input
-                  id="promotionText"
-                  value={formData.promotionText}
-                  onChange={(e) => setFormData({ ...formData, promotionText: e.target.value })}
-                  placeholder="e.g., Early bird discount 20% off!"
-                />
-              </div>
+              {/* ... Ticket Type Section ... */}
               <div className="space-y-2">
                 <Label>Ticket Type</Label>
                 <div className="flex gap-4">
@@ -250,22 +201,27 @@ const CreateEvent = () => {
                 </div>
               </div>
 
+              {!formData.isFree && (
+                <div className="space-y-2">
+                  <Label htmlFor="ticketPrice">Standard Ticket Price (₹)</Label>
+                  <Input
+                    id="ticketPrice"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.ticketPrice}
+                    onChange={(e) => setFormData({ ...formData, ticketPrice: e.target.value })}
+                    placeholder="0.00"
+                    required={!formData.isFree}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    You can add different Ticket Tiers and configure Payment Details in the "Customize Event" page after creating the event.
+                  </p>
+                </div>
+              )}
+
               <div className="grid md:grid-cols-2 gap-6">
-                {!formData.isFree && (
-                  <div className="space-y-2">
-                    <Label htmlFor="ticketPrice">Ticket Price (₹)</Label>
-                    <Input
-                      id="ticketPrice"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.ticketPrice}
-                      onChange={(e) => setFormData({ ...formData, ticketPrice: e.target.value })}
-                      placeholder="0.00"
-                      required={!formData.isFree}
-                    />
-                  </div>
-                )}
+                {/* Capacity, Category, Tags from before */}
                 <div className="space-y-2">
                   <Label htmlFor="capacity">Total Capacity</Label>
                   <Input
@@ -277,6 +233,54 @@ const CreateEvent = () => {
                     placeholder="Unlimited"
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category</Label>
+                  <select
+                    id="category"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  >
+                    <option value="">Select Category</option>
+                    <option value="Concert">Concert</option>
+                    <option value="Conference">Conference</option>
+                    <option value="Workshop">Workshop</option>
+                    <option value="Meetup">Meetup</option>
+                    <option value="Party">Party</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="tags">Tags</Label>
+                <Input
+                  id="tags"
+                  value={formData.tags}
+                  onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                  placeholder="Music, Tech, VIP (comma separated)"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={4}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="promotionText">Promotion Text</Label>
+                <Input
+                  id="promotionText"
+                  value={formData.promotionText}
+                  onChange={(e) => setFormData({ ...formData, promotionText: e.target.value })}
+                  placeholder="e.g., Early bird discount 20% off!"
+                />
               </div>
 
               <Button type="submit" variant="cyber" size="lg" className="w-full" disabled={isLoading}>

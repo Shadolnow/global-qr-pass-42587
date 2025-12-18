@@ -47,6 +47,8 @@ interface EventCustomizationProps {
     additionalInfo?: string;
     socialLinks?: SocialLinks;
     sponsors?: Sponsor[];
+    upiId?: string;
+    paymentQrImageUrl?: string;
   };
 }
 
@@ -58,6 +60,8 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
   const [additionalInfo, setAdditionalInfo] = useState(initialData?.additionalInfo || '');
   const [socialLinks, setSocialLinks] = useState<SocialLinks>(initialData?.socialLinks || {});
   const [sponsors, setSponsors] = useState<Sponsor[]>(initialData?.sponsors || []);
+  const [upiId, setUpiId] = useState(initialData?.upiId || '');
+  const [paymentQrImageUrl, setPaymentQrImageUrl] = useState(initialData?.paymentQrImageUrl || '');
   const [uploading, setUploading] = useState(false);
   const [newVideoUrl, setNewVideoUrl] = useState('');
 
@@ -73,7 +77,7 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
 
     const maxSize = 5 * 1024 * 1024;
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (file.size > maxSize) {
@@ -94,7 +98,7 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
         const file = files[i];
         const fileExt = file.name.split('.').pop()?.toLowerCase();
         const fileName = `${userId}/gallery/${crypto.randomUUID()}.${fileExt}`;
-        
+
         const { error: uploadError } = await supabase.storage
           .from('event-images')
           .upload(fileName, file);
@@ -128,7 +132,7 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
     if (youtubeMatch) {
       return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
     }
-    
+
     // Vimeo
     const vimeoMatch = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
     if (vimeoMatch) {
@@ -211,7 +215,7 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
 
     const maxSize = 2 * 1024 * 1024;
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
-    
+
     if (file.size > maxSize) {
       toast.error('Logo is too large. Maximum size is 2MB');
       return;
@@ -225,7 +229,7 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
     try {
       const fileExt = file.name.split('.').pop()?.toLowerCase();
       const fileName = `${userId}/sponsors/${crypto.randomUUID()}.${fileExt}`;
-      
+
       const { error: uploadError } = await supabase.storage
         .from('event-images')
         .upload(fileName, file);
@@ -265,6 +269,46 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
     setSponsors(sponsors.filter((_, i) => i !== index));
   };
 
+  const handlePaymentQrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const maxSize = 2 * 1024 * 1024;
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+    if (file.size > maxSize) {
+      toast.error('File is too large. Maximum size is 2MB');
+      return;
+    }
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
+      const fileName = `${userId}/payment-qr/${crypto.randomUUID()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('event-images')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('event-images')
+        .getPublicUrl(fileName);
+
+      setPaymentQrImageUrl(publicUrl);
+      toast.success('Payment QR Code uploaded!');
+    } catch (error: any) {
+      toast.error('Failed to upload QR Code');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSave = async () => {
     try {
       const { error } = await supabase
@@ -276,7 +320,10 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
           schedule: schedule.filter(s => s.time && s.title) as any,
           additional_info: additionalInfo,
           social_links: socialLinks as any,
-          sponsors: sponsors.filter(s => s.name && s.logoUrl) as any
+          social_links: socialLinks as any,
+          sponsors: sponsors.filter(s => s.name && s.logoUrl) as any,
+          upi_id: upiId,
+          payment_qr_image_url: paymentQrImageUrl
         })
         .eq('id', eventId);
 
@@ -291,6 +338,69 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
     <div className="space-y-6">
       {/* Ticket Tiers */}
       <TicketTiersManager eventId={eventId} isFreeEvent={isFreeEvent} />
+
+      {!isFreeEvent && (
+        <Card className="border-2 border-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="w-5 h-5 text-primary" />
+              Payment Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="upiId">UPI ID (VPA)</Label>
+              <Input
+                id="upiId"
+                placeholder="e.g. merchant@okaxis"
+                value={upiId}
+                onChange={(e) => setUpiId(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter a UPI ID where customers can send payments directly.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Custom Payment QR Code</Label>
+              {paymentQrImageUrl ? (
+                <div className="flex flex-col items-start gap-4">
+                  <img
+                    src={paymentQrImageUrl}
+                    alt="Payment QR"
+                    className="w-48 h-48 object-contain border rounded-lg bg-white p-2"
+                  />
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => document.getElementById('qr-upload')?.click()}>
+                      Change Image
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setPaymentQrImageUrl('')} className="text-destructive">
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-muted rounded-lg p-6 text-center">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Upload a screenshot of your payment QR code (GPay, PhonePe, Paytm etc)
+                  </p>
+                  <Button variant="outline" onClick={() => document.getElementById('qr-upload')?.click()}>
+                    Upload QR Image
+                  </Button>
+                </div>
+              )}
+              <Input
+                id="qr-upload"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePaymentQrUpload}
+                disabled={uploading}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Gallery */}
       <Card>
@@ -313,13 +423,13 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
               className="mt-1"
             />
           </div>
-          
+
           {galleryImages.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {galleryImages.map((url, index) => (
                 <div key={index} className="relative group">
-                  <img 
-                    src={url} 
+                  <img
+                    src={url}
                     alt={`Gallery ${index + 1}`}
                     className="w-full h-32 object-cover rounded-lg border-2 border-border"
                   />
@@ -362,7 +472,7 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
           <p className="text-sm text-muted-foreground">
             Add up to 5 videos from YouTube or Vimeo to showcase your event
           </p>
-          
+
           {videos.length > 0 && (
             <div className="grid gap-4">
               {videos.map((url, index) => (
@@ -409,7 +519,7 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
                 onChange={(e) => updateSocialLink('instagram', e.target.value)}
               />
             </div>
-            
+
             <div className="flex items-center gap-3">
               <Facebook className="w-5 h-5 text-blue-600" />
               <Input
@@ -418,7 +528,7 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
                 onChange={(e) => updateSocialLink('facebook', e.target.value)}
               />
             </div>
-            
+
             <div className="flex items-center gap-3">
               <Twitter className="w-5 h-5 text-sky-500" />
               <Input
@@ -427,7 +537,7 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
                 onChange={(e) => updateSocialLink('twitter', e.target.value)}
               />
             </div>
-            
+
             <div className="flex items-center gap-3">
               <Linkedin className="w-5 h-5 text-blue-700" />
               <Input
@@ -436,7 +546,7 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
                 onChange={(e) => updateSocialLink('linkedin', e.target.value)}
               />
             </div>
-            
+
             <div className="flex items-center gap-3">
               <Youtube className="w-5 h-5 text-red-600" />
               <Input
@@ -445,7 +555,7 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
                 onChange={(e) => updateSocialLink('youtube', e.target.value)}
               />
             </div>
-            
+
             <div className="flex items-center gap-3">
               <Globe className="w-5 h-5 text-muted-foreground" />
               <Input
@@ -600,13 +710,13 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
                       className="mt-1"
                     />
                   </div>
-                  
+
                   <div>
                     <Label>Logo</Label>
                     {sponsor.logoUrl ? (
                       <div className="flex items-center gap-3 mt-1">
-                        <img 
-                          src={sponsor.logoUrl} 
+                        <img
+                          src={sponsor.logoUrl}
                           alt={sponsor.name || 'Sponsor logo'}
                           className="h-16 w-auto max-w-[200px] object-contain border rounded p-1 bg-background"
                         />
@@ -628,7 +738,7 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
                       />
                     )}
                   </div>
-                  
+
                   <div>
                     <Label>Website URL (optional)</Label>
                     <Input

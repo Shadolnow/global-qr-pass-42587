@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SocialShare } from '@/components/SocialShare';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Calendar, MapPin, Download, ArrowLeft, IndianRupee, Ticket, Clock, HelpCircle, Image as ImageIcon, CalendarPlus, Users, AlertCircle, Video, Instagram, Facebook, Twitter, Linkedin, Youtube, Globe, Award } from 'lucide-react';
+import { Calendar, MapPin, Download, ArrowLeft, Ticket, Clock, HelpCircle, Image as ImageIcon, CalendarPlus, Users, AlertCircle, Video, Instagram, Facebook, Twitter, Linkedin, Youtube, Globe, Award, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -15,6 +15,8 @@ import { TicketCard } from '@/components/TicketCard';
 import { TierSelector } from '@/components/TierSelector';
 import { downloadICS } from '@/utils/calendar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { QRCodeSVG } from 'qrcode.react';
 import {
   InputOTP,
   InputOTPGroup,
@@ -45,6 +47,11 @@ const PublicEvent = () => {
   const [selectedTier, setSelectedTier] = useState<SelectedTier | null>(null);
   const [hasTiers, setHasTiers] = useState(false);
 
+  // Payment States
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [transactionId, setTransactionId] = useState("");
+
   useEffect(() => {
     if (!eventId) return;
 
@@ -62,7 +69,7 @@ const PublicEvent = () => {
       }
 
       setEvent(data);
-      
+
       // Check if event has tiers
       const { data: tiers } = await supabase
         .from('ticket_tiers')
@@ -70,7 +77,7 @@ const PublicEvent = () => {
         .eq('event_id', eventId)
         .eq('is_active', true)
         .limit(1);
-      
+
       setHasTiers(tiers && tiers.length > 0);
     };
 
@@ -84,7 +91,6 @@ const PublicEvent = () => {
     try {
       const validated = claimSchema.parse(formData);
 
-      // Check capacity
       if (event.capacity) {
         const { data: availabilityData } = await supabase
           .rpc('check_ticket_availability', { event_id_input: eventId });
@@ -96,7 +102,6 @@ const PublicEvent = () => {
         }
       }
 
-      // Send OTP via custom API endpoint
       const response = await fetch('/api/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -125,10 +130,9 @@ const PublicEvent = () => {
     }
   };
 
-  const verifyAndClaim = async () => {
+  const verifyOtp = async () => {
     setLoading(true);
     try {
-      // Verify OTP via custom API endpoint
       const verifyResponse = await fetch('/api/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -137,20 +141,39 @@ const PublicEvent = () => {
 
       const verifyResult = await verifyResponse.json();
 
-      if (!verifyResponse.ok) {
-        toast.error(verifyResult.error || "Invalid OTP");
+      if (!verifyResponse.ok) throw new Error(verifyResult.error || "Invalid OTP");
+      if (!verifyResult.success) throw new Error("Verification failed");
+
+      setIsEmailVerified(true);
+
+      if (event.is_free) {
+        await createTicket();
+      } else {
+        setShowPaymentDialog(true);
         setLoading(false);
-        return;
       }
 
-      if (!verifyResult.success) {
-        toast.error("Verification failed. Please try again.");
-        setLoading(false);
-        return;
-      }
+    } catch (error: any) {
+      toast.error(error.message);
+      setLoading(false);
+    }
+  };
 
-      // Generate ticket code
+  const createTicket = async (paymentType: 'online' | 'venue' = 'online') => {
+    try {
+      setLoading(true);
       const ticketCode = `${Math.random().toString(36).substring(2, 10).toUpperCase()}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+
+      // Determine status based on payment type
+      let status = 'pending';
+      let refId = transactionId || null;
+
+      if (event.is_free) {
+        status = 'paid';
+      } else if (paymentType === 'venue') {
+        status = 'pay_at_venue';
+        refId = 'PAY_AT_VENUE';
+      }
 
       const { data: ticket, error } = await supabase
         .from('tickets')
@@ -160,52 +183,65 @@ const PublicEvent = () => {
           attendee_phone: formData.phone,
           attendee_email: formData.email.toLowerCase(),
           ticket_code: ticketCode,
-          tier_id: selectedTier?.id || null
+          tier_id: selectedTier?.id || null,
+          payment_ref_id: refId,
+          payment_status: status
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      setClaimedTicket({ ...ticket, events: event, tier_name: selectedTier?.name });
-      toast.success('Ticket claimed successfully!');
+      // BRANCH LOGIC: Free/Venue vs Paid
+      if (event.is_free || paymentType === 'venue') {
+        // Instant Success (Free or Pay at Venue Token)
+        setClaimedTicket({ ...ticket, events: event, tier_name: selectedTier?.name });
+        setShowPaymentDialog(false);
 
-      // Send Email via Vercel Function
-      try {
-        await fetch('/api/send-ticket', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: formData.email,
-            ticketCode: ticketCode,
-            eventTitle: event.title,
-            eventDate: format(new Date(event.event_date), 'PPP'),
-            venue: event.venue,
-            ticketId: ticket.id,
-            attendeeName: formData.name
-          })
+        const successMsg = paymentType === 'venue'
+          ? 'Booking Token Generated! Pay at venue to activate.'
+          : 'Ticket claimed successfully!';
+        toast.success(successMsg);
+
+        // Send Email async
+        try {
+          await fetch('/api/send-ticket', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: formData.email,
+              ticketCode: ticketCode,
+              eventTitle: event.title,
+              eventDate: format(new Date(event.event_date), 'PPP'),
+              venue: event.venue,
+              ticketId: ticket.id,
+              attendeeName: formData.name,
+              isToken: paymentType === 'venue'
+            })
+          });
+          if (paymentType !== 'venue') toast.success('Ticket sent to your email!');
+        } catch (emailError) {
+          console.error("Failed to send email:", emailError);
+        }
+
+        // WhatsApp Link
+        const ticketUrl = `${window.location.origin}/ticket/${ticket.id}`;
+        const typeLabel = paymentType === 'venue' ? 'Booking Token' : 'Ticket';
+        const message = `🎫 Your ${typeLabel} for ${event.title}\n\nEvent: ${event.title}\nDate: ${format(new Date(event.event_date), 'PPP')}\nVenue: ${event.venue}\nCode: ${ticketCode}\n\nView: ${ticketUrl}`;
+
+        const cleanPhone = formData.phone.replace(/\D/g, '');
+        if (cleanPhone.length >= 10) {
+          const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+          window.open(whatsappUrl, '_blank');
+        }
+      } else {
+        // PAID FLOW (Pending Approval)
+        setShowPaymentDialog(false);
+        toast.success('Payment recorded. Ticket is pending approval.');
+        navigate(`/e/${eventId}/pending`, {
+          state: { email: formData.email, ticketId: ticket.id }
         });
-        toast.success('Ticket sent to your email!');
-      } catch (emailError) {
-        console.error("Failed to send email:", emailError);
-      }
-
-      // Open WhatsApp - provide alternative if blocked
-      const ticketUrl = `${window.location.origin}/ticket/${ticket.id}`;
-      const message = `🎫 Your ticket for ${event.title}\n\nEvent: ${event.title}\nDate: ${format(new Date(event.event_date), 'PPP')}\nVenue: ${event.venue}\nTicket Code: ${ticketCode}\n\nView your ticket: ${ticketUrl}`;
-
-      // Copy to clipboard as fallback
-      navigator.clipboard.writeText(`${message}\n\nManually open WhatsApp and send this to ${formData.phone}`);
-
-      // Try to open WhatsApp
-      const cleanPhone = formData.phone.replace(/\D/g, '');
-      const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-
-      const popup = window.open(whatsappUrl, '_blank');
-      if (!popup) {
-        toast.info('Ticket link copied to clipboard! Please manually send to WhatsApp', {
-          duration: 5000
-        });
+        return;
       }
 
     } catch (error: any) {
@@ -233,6 +269,8 @@ const PublicEvent = () => {
     );
   }
 
+  const ticketPrice = selectedTier ? selectedTier.price : (event.ticket_price || 0);
+
   return (
     <div className="min-h-screen p-4 md:p-8">
       <div className="container mx-auto max-w-4xl">
@@ -242,9 +280,9 @@ const PublicEvent = () => {
         </Button>
 
         {/* Event Details */}
-        <Card className="mb-8">
+        <Card className="mb-8 overflow-hidden border-2 border-primary/10">
           {event.image_url && (
-            <div className="w-full h-64 md:h-80 overflow-hidden rounded-t-lg">
+            <div className="w-full h-64 md:h-80 overflow-hidden bg-muted">
               <img
                 src={event.image_url}
                 alt={event.title}
@@ -253,30 +291,30 @@ const PublicEvent = () => {
             </div>
           )}
           <CardHeader>
-            <CardTitle className="text-3xl">{event.title}</CardTitle>
+            <CardTitle className="text-3xl font-bold">{event.title}</CardTitle>
             <CardDescription className="flex items-center gap-2 text-lg">
-              <Calendar className="w-5 h-5" />
+              <Calendar className="w-5 h-5 text-primary" />
               {format(new Date(event.event_date), 'PPP')}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-wrap gap-4">
-              <p className="flex items-center gap-2">
-                <MapPin className="w-5 h-5" />
+          <CardContent className="space-y-6">
+            <div className="flex flex-wrap gap-6 text-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <MapPin className="w-5 h-5 text-primary" />
                 <a
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.venue)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary hover:underline"
+                  className="hover:text-primary hover:underline transition-colors"
                 >
                   {event.venue}
                 </a>
-              </p>
+              </div>
               {event.capacity && (
-                <p className="flex items-center gap-2 text-muted-foreground">
-                  <Users className="w-5 h-5" />
-                  {event.tickets_issued} / {event.capacity} tickets claimed
-                </p>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Users className="w-5 h-5 text-primary" />
+                  <span>{event.tickets_issued} / {event.capacity} joined</span>
+                </div>
               )}
             </div>
 
@@ -289,21 +327,23 @@ const PublicEvent = () => {
               </Alert>
             )}
 
-            <Button
-              variant="outline"
-              onClick={handleAddToCalendar}
-              className="w-full sm:w-auto"
-            >
-              <CalendarPlus className="w-4 h-4 mr-2" />
-              Add to Calendar
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={handleAddToCalendar} size="sm">
+                <CalendarPlus className="w-4 h-4 mr-2" />
+                Add to Calendar
+              </Button>
+            </div>
 
             {event.description && (
-              <p className="text-muted-foreground">{event.description}</p>
+              <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{event.description}</p>
             )}
+
             {event.promotion_text && (
-              <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
-                <p className="text-primary font-semibold">🎉 {event.promotion_text}</p>
+              <div className="bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20 rounded-lg p-4">
+                <p className="text-primary font-semibold flex items-center gap-2">
+                  <Award className="w-4 h-4" />
+                  {event.promotion_text}
+                </p>
               </div>
             )}
           </CardContent>
@@ -470,69 +510,33 @@ const PublicEvent = () => {
             <CardContent>
               <div className="flex flex-wrap gap-3">
                 {event.social_links.instagram && (
-                  <a 
-                    href={event.social_links.instagram} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90 transition-opacity"
-                  >
-                    <Instagram className="w-5 h-5" />
-                    Instagram
+                  <a href={event.social_links.instagram} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90 transition-opacity">
+                    <Instagram className="w-5 h-5" /> Instagram
                   </a>
                 )}
                 {event.social_links.facebook && (
-                  <a 
-                    href={event.social_links.facebook} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:opacity-90 transition-opacity"
-                  >
-                    <Facebook className="w-5 h-5" />
-                    Facebook
+                  <a href={event.social_links.facebook} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:opacity-90 transition-opacity">
+                    <Facebook className="w-5 h-5" /> Facebook
                   </a>
                 )}
                 {event.social_links.twitter && (
-                  <a 
-                    href={event.social_links.twitter} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-500 text-white hover:opacity-90 transition-opacity"
-                  >
-                    <Twitter className="w-5 h-5" />
-                    Twitter/X
+                  <a href={event.social_links.twitter} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-500 text-white hover:opacity-90 transition-opacity">
+                    <Twitter className="w-5 h-5" /> Twitter/X
                   </a>
                 )}
                 {event.social_links.linkedin && (
-                  <a 
-                    href={event.social_links.linkedin} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-700 text-white hover:opacity-90 transition-opacity"
-                  >
-                    <Linkedin className="w-5 h-5" />
-                    LinkedIn
+                  <a href={event.social_links.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-700 text-white hover:opacity-90 transition-opacity">
+                    <Linkedin className="w-5 h-5" /> LinkedIn
                   </a>
                 )}
                 {event.social_links.youtube && (
-                  <a 
-                    href={event.social_links.youtube} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white hover:opacity-90 transition-opacity"
-                  >
-                    <Youtube className="w-5 h-5" />
-                    YouTube
+                  <a href={event.social_links.youtube} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white hover:opacity-90 transition-opacity">
+                    <Youtube className="w-5 h-5" /> YouTube
                   </a>
                 )}
                 {event.social_links.website && (
-                  <a 
-                    href={event.social_links.website} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted text-foreground border border-border hover:bg-accent transition-colors"
-                  >
-                    <Globe className="w-5 h-5" />
-                    Website
+                  <a href={event.social_links.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted text-foreground border border-border hover:bg-accent transition-colors">
+                    <Globe className="w-5 h-5" /> Website
                   </a>
                 )}
               </div>
@@ -540,216 +544,236 @@ const PublicEvent = () => {
           </Card>
         )}
 
-        {/* Ticket Claiming or Display */}
-        {!event.is_free ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>Paid Event</CardTitle>
-              <CardDescription>This is a paid event - ticket purchase coming soon!</CardDescription>
-            </CardHeader>
-            <CardContent className="text-center py-8">
-              <IndianRupee className="w-16 h-16 mx-auto mb-4 text-primary" />
-              <p className="text-2xl font-bold mb-2">
-                {event.ticket_price}
-              </p>
-              {event.capacity && (
-                <p className="text-sm text-muted-foreground mb-2">
-                  {event.capacity - event.tickets_issued} tickets remaining
-                </p>
-              )}
-              <p className="text-muted-foreground mb-6">
-                Online ticket purchase will be available soon
-              </p>
-              <Button variant="outline" disabled>
-                <Ticket className="w-4 h-4 mr-2" />
-                Purchase Ticket (Coming Soon)
-              </Button>
-            </CardContent>
-          </Card>
-        ) : event.capacity && event.tickets_issued >= event.capacity ? (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-lg">
-              This event is sold out. All tickets have been claimed.
-            </AlertDescription>
-          </Alert>
-        ) : !claimedTicket ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>Claim Your Free Ticket</CardTitle>
-              <CardDescription>
-                Enter your details to receive your ticket
-                {event.capacity && (
-                  <span className="block mt-2 text-primary">
-                    {event.capacity - event.tickets_issued} tickets remaining
-                  </span>
-                )}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {!showOtpInput ? (
-                <form onSubmit={handleClaim} className="space-y-4">
-                  {/* Tier Selector */}
-                  {hasTiers && (
-                    <TierSelector
-                      eventId={eventId!}
-                      isFreeEvent={event.is_free}
-                      selectedTierId={selectedTier?.id || null}
-                      onSelect={(tier) => setSelectedTier(tier ? { id: tier.id, name: tier.name, price: tier.price } : null)}
-                    />
-                  )}
-                  
-                  {/* Show selected tier info */}
-                  {selectedTier && (
-                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                      <p className="text-sm font-medium">
-                        Selected: {selectedTier.name} 
-                        {selectedTier.price > 0 && ` - ₹${selectedTier.price.toLocaleString()}`}
-                      </p>
+        {/* Registration Section */}
+        {!claimedTicket ? (
+          <div id="register">
+            {(event.capacity && event.tickets_issued >= event.capacity) ? (
+              <Alert variant="destructive" className="mb-8">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-lg font-semibold">
+                  Sold Out
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Card className="border-2 border-primary/20 shadow-lg shadow-primary/5">
+                <CardHeader>
+                  <CardTitle className="text-2xl flex items-center gap-2">
+                    <Ticket className="w-6 h-6 text-primary" />
+                    {event.is_free ? 'Register for Free' : 'Buy Ticket'}
+                  </CardTitle>
+                  <CardDescription>
+                    Enter your details to book your spot.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {!showOtpInput ? (
+                    <form onSubmit={handleClaim} className="space-y-4">
+                      {hasTiers && (
+                        <TierSelector
+                          eventId={eventId!}
+                          isFreeEvent={event.is_free}
+                          selectedTierId={selectedTier?.id || null}
+                          onSelect={(tier) => setSelectedTier(tier ? { id: tier.id, name: tier.name, price: tier.price } : null)}
+                        />
+                      )}
+
+                      {!event.is_free && !hasTiers && (
+                        <div className="p-4 bg-muted rounded-lg flex justify-between items-center">
+                          <span className="font-medium">Standard Ticket</span>
+                          <span className="text-xl font-bold text-primary">₹{event.ticket_price}</span>
+                        </div>
+                      )}
+
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="name">Full Name</Label>
+                          <Input
+                            id="name"
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            required
+                            placeholder="John Doe"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="phone">Phone (WhatsApp)</Label>
+                          <Input
+                            id="phone"
+                            value={formData.phone}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            required
+                            placeholder="+91 9876543210"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email Address</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          required
+                          placeholder="john@example.com"
+                        />
+                        <p className="text-xs text-muted-foreground">We'll verify this email with an OTP.</p>
+                      </div>
+
+                      <Button
+                        type="submit"
+                        className="w-full bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
+                        size="lg"
+                        disabled={loading || (hasTiers && !selectedTier)}
+                      >
+                        {loading ? 'Sending OTP...' : 'Verify Email & Continue'}
+                      </Button>
+                    </form>
+                  ) : (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                      <div className="text-center space-y-2">
+                        <h3 className="font-semibold text-lg">Verify Email Address</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Enter the 6-digit code sent to <span className="text-foreground font-medium">{formData.email}</span>
+                        </p>
+                      </div>
+
+                      <div className="flex justify-center my-4">
+                        <InputOTP
+                          maxLength={6}
+                          value={otp}
+                          onChange={(value) => setOtp(value)}
+                        >
+                          <InputOTPGroup>
+                            <InputOTPSlot index={0} />
+                            <InputOTPSlot index={1} />
+                            <InputOTPSlot index={2} />
+                            <InputOTPSlot index={3} />
+                            <InputOTPSlot index={4} />
+                            <InputOTPSlot index={5} />
+                          </InputOTPGroup>
+                        </InputOTP>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <Button variant="outline" className="flex-1" onClick={() => setShowOtpInput(false)}>
+                          Change Details
+                        </Button>
+                        <Button className="flex-1" onClick={verifyOtp} disabled={otp.length !== 6 || loading}>
+                          {loading ? 'Verifying...' : (event.is_free ? 'Claim Ticket' : 'Proceed to Payment')}
+                        </Button>
+                      </div>
                     </div>
                   )}
-                  
-                  <div>
-                    <Label htmlFor="name">Full Name *</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Enter your name"
-                      required
-                      maxLength={100}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="email">Email Address *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="your@email.com"
-                      required
-                      maxLength={255}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      We'll send your ticket to this email
-                    </p>
-                  </div>
-                  <div>
-                    <Label htmlFor="phone">Phone Number (with country code) *</Label>
-                    <Input
-                      id="phone"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="+1234567890"
-                      required
-                      maxLength={20}
-                    />
-                  </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    disabled={loading || (hasTiers && !selectedTier)}
-                  >
-                    {loading ? 'Sending OTP...' : hasTiers && !selectedTier ? 'Select a Ticket Type' : 'Verify & Claim Ticket'}
-                  </Button>
-                </form>
-              ) : (
-                <div className="space-y-6">
-                  <div className="text-center space-y-2">
-                    <h3 className="font-semibold text-lg">Verify Email Address</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Enter the 6-digit code sent to {formData.email}
-                    </p>
-                  </div>
-
-                  <div className="flex justify-center">
-                    <InputOTP
-                      maxLength={6}
-                      value={otp}
-                      onChange={(value) => setOtp(value)}
-                    >
-                      <InputOTPGroup>
-                        <InputOTPSlot index={0} />
-                        <InputOTPSlot index={1} />
-                        <InputOTPSlot index={2} />
-                        <InputOTPSlot index={3} />
-                        <InputOTPSlot index={4} />
-                        <InputOTPSlot index={5} />
-                      </InputOTPGroup>
-                    </InputOTP>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <Button
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => setShowOtpInput(false)}
-                    >
-                      Back
-                    </Button>
-                    <Button
-                      className="flex-1"
-                      onClick={verifyAndClaim}
-                      disabled={otp.length !== 6 || loading}
-                    >
-                      {loading ? 'Verifying...' : 'Verify & Claim'}
-                    </Button>
-                  </div>
-
-                  <p className="text-xs text-center text-muted-foreground">
-                    Didn't receive code? <button
-                      type="button"
-                      className="text-primary hover:underline disabled:opacity-50"
-                      onClick={async () => {
-                        toast.info("Resending code...");
-                        const response = await fetch('/api/send-otp', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ email: formData.email })
-                        });
-                        const result = await response.json();
-                        if (!response.ok) toast.error(result.error || "Failed to resend");
-                        else toast.success("Code resent to email!");
-                      }}
-                    >
-                      Resend
-                    </button>
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         ) : (
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Your Ticket</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <TicketCard ticket={claimedTicket} />
-
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={handleDownload} className="flex-1">
-                    <Download className="w-4 h-4 mr-2" />
-                    Download
-                  </Button>
-                </div>
-
-                <SocialShare
-                  url={`${window.location.origin}/ticket/${claimedTicket.id}`}
-                  title={`Ticket for ${event.title}`}
-                  description="Check out my event ticket!"
-                  compact
-                />
-
-                <p className="text-sm text-muted-foreground text-center">
-                  Please present this ticket at entry
-                </p>
-              </CardContent>
-            </Card>
+            <Alert className={`bg-${claimedTicket.payment_status === 'pay_at_venue' ? 'yellow' : 'green'}-500/10 border-${claimedTicket.payment_status === 'pay_at_venue' ? 'yellow' : 'green'}-500/20 text-${claimedTicket.payment_status === 'pay_at_venue' ? 'yellow' : 'green'}-500`}>
+              <CheckCircle2 className="h-4 w-4" />
+              <div className="space-y-1">
+                <AlertDescription className="font-medium">
+                  {claimedTicket.payment_status === 'pay_at_venue'
+                    ? 'Token Generated! Show this at the venue to pay and enter.'
+                    : 'Success! Your ticket has been generated.'}
+                </AlertDescription>
+                {claimedTicket.payment_status === 'pay_at_venue' && (
+                  <p className="text-sm opacity-90">
+                    Payments need to made within 24 hours of booking post which the tickets get cancelled.
+                    You can call at <strong>7507066880</strong> if you want to confirm on Phone.
+                  </p>
+                )}
+              </div>
+            </Alert>
+            <TicketCard ticket={claimedTicket} />
+            <div className="flex justify-center">
+              <Button onClick={() => window.print()} variant="outline">Print / Save as PDF</Button>
+            </div>
           </div>
         )}
+
+        {/* Payment Dialog */}
+        <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Complete Payment</DialogTitle>
+              <DialogDescription>
+                Scan the QR code to pay <strong>₹{ticketPrice}</strong> for your ticket.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex flex-col items-center justify-center p-6 space-y-6">
+              {/* QR Code Display */}
+              <div className="bg-white p-4 rounded-xl shadow-lg border">
+                {event?.payment_qr_image_url ? (
+                  <img
+                    src={event.payment_qr_image_url}
+                    alt="Payment QR"
+                    className="w-48 h-48 object-contain"
+                  />
+                ) : event?.upi_id ? (
+                  <QRCodeSVG
+                    value={`upi://pay?pa=${event.upi_id}&pn=TicketPro&am=${ticketPrice}&cu=INR`}
+                    size={192}
+                    level="M"
+                  />
+                ) : (
+                  <div className="w-48 h-48 flex items-center justify-center bg-gray-100 text-center p-2 text-sm text-gray-500">
+                    No Payment QR available. Please contact organizer.
+                  </div>
+                )}
+              </div>
+
+              {event?.upi_id && (
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">UPI ID</p>
+                  <div className="flex items-center gap-2 bg-muted px-3 py-1 rounded-full">
+                    <code className="text-sm font-mono text-primary">{event.upi_id}</code>
+                  </div>
+                </div>
+              )}
+
+              <div className="w-full space-y-2">
+                <Label htmlFor="txnId">Transaction ID / REF No. (Optional)</Label>
+                <Input
+                  id="txnId"
+                  placeholder="e.g. 3j4k5l6m7n8"
+                  value={transactionId}
+                  onChange={(e) => setTransactionId(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Enter the reference number from your payment app for faster confirmation.
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter className="flex-col sm:flex-col gap-2 space-y-2">
+              <Button onClick={() => createTicket('online')} disabled={loading} className="w-full bg-green-600 hover:bg-green-700">
+                {loading ? 'Processing...' : 'I Have Paid • Confirm Ticket'}
+              </Button>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">Or</span>
+                </div>
+              </div>
+              <Button onClick={() => createTicket('venue')} disabled={loading} variant="outline" className="w-full border-primary text-primary hover:bg-primary/10">
+                Generate Pay-At-Venue Token
+              </Button>
+              <Button variant="ghost" onClick={() => setShowPaymentDialog(false)} className="w-full">
+                Cancel
+              </Button>
+              <p className="text-xs text-center text-muted-foreground mt-2 px-4 leading-relaxed">
+                Payments need to be made within 24 hours of booking. Call <span className="text-foreground font-medium">7507066880</span> for confirmation.
+              </p>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
       </div>
     </div>
   );

@@ -25,3 +25,9 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Temporary files and folders
+temp_repo
+*.bak
+*.old
+*.tmp

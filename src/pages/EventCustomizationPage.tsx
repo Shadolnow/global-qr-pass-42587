@@ -20,7 +20,7 @@ const EventCustomizationPage = () => {
       navigate('/auth');
       return;
     }
-    
+
     fetchEvent();
   }, [user, eventId, navigate]);
 
@@ -32,15 +32,15 @@ const EventCustomizationPage = () => {
         .eq('id', eventId)
         .eq('user_id', user?.id)
         .maybeSingle();
-      
+
       if (error) throw error;
-      
+
       if (!data) {
         toast.error('Event not found or access denied');
         navigate('/events');
         return;
       }
-      
+
       setEvent(data);
     } catch (error: any) {
       console.error('Load event error:', error);
@@ -77,6 +77,7 @@ const EventCustomizationPage = () => {
         <EventCustomization
           eventId={eventId!}
           userId={user?.id!}
+          isFreeEvent={event.is_free}
           initialData={{
             galleryImages: event.gallery_images || [],
             videos: event.videos || [],
@@ -84,7 +85,9 @@ const EventCustomizationPage = () => {
             schedule: event.schedule || [],
             additionalInfo: event.additional_info || '',
             socialLinks: event.social_links || {},
-            sponsors: event.sponsors || []
+            sponsors: event.sponsors || [],
+            upiId: event.upi_id || '',
+            paymentQrImageUrl: event.payment_qr_image_url || ''
           }}
         />
       </div>

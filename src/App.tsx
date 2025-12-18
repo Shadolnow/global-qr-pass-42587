@@ -21,8 +21,15 @@ import EventCustomizationPage from "./pages/EventCustomizationPage";
 import Pricing from "./pages/Pricing";
 import BusinessSignup from "./pages/BusinessSignup";
 import AdminSubscriptions from "./pages/AdminSubscriptions";
+import BusinessDashboard from "./pages/BusinessDashboard";
+import BankAccounts from "./pages/BankAccounts";
 import NotFound from "./pages/NotFound";
 import AuthRoute from "@/components/RouteGuards/AuthRoute";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import PWAUpdateNotification from "@/components/PWAUpdateNotification";
+import MobileSettings from "./pages/MobileSettings";
+import Analytics from "./pages/Analytics";
+import GlobalTickets from "./pages/GlobalTickets";
 
 const queryClient = new QueryClient();
 
@@ -41,7 +48,7 @@ const App = () => (
             <Route path="/e/:eventId" element={<PublicEvent />} />
             <Route path="/public-events" element={<PublicEvents />} />
             <Route path="/ticket/:ticketId" element={<TicketViewer />} />
-            
+
             {/* Protected Routes */}
             <Route path="/create-event" element={<AuthRoute><CreateEvent /></AuthRoute>} />
             <Route path="/events" element={<AuthRoute><Events /></AuthRoute>} />
@@ -50,14 +57,21 @@ const App = () => (
             <Route path="/scan" element={<AuthRoute><Scan /></AuthRoute>} />
             <Route path="/attendance" element={<AuthRoute><Attendance /></AuthRoute>} />
             <Route path="/dashboard" element={<AuthRoute><Dashboard /></AuthRoute>} />
+            <Route path="/business-dashboard" element={<AuthRoute><BusinessDashboard /></AuthRoute>} />
+            <Route path="/bank-accounts" element={<AuthRoute><BankAccounts /></AuthRoute>} />
             <Route path="/admin" element={<AuthRoute><AdminDashboard /></AuthRoute>} />
             <Route path="/admin/events" element={<AuthRoute><AdminEvents /></AuthRoute>} />
             <Route path="/admin/subscriptions" element={<AuthRoute><AdminSubscriptions /></AuthRoute>} />
-            
+            <Route path="/mobile-settings" element={<AuthRoute><MobileSettings /></AuthRoute>} />
+            <Route path="/analytics" element={<AuthRoute><Analytics /></AuthRoute>} />
+            <Route path="/global-tickets" element={<AuthRoute><GlobalTickets /></AuthRoute>} />
+
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        <PWAInstallPrompt />
+        <PWAUpdateNotification />
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>

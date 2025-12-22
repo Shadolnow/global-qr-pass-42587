@@ -33,6 +33,43 @@ const BusinessDashboard = () => {
             return;
         }
         fetchDashboardData();
+
+        // Realtime Subscription
+        const channel = supabase
+            .channel('dashboard-updates')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'events',
+                    filter: `user_id=eq.${user.id}`
+                },
+                (payload) => {
+                    if (payload.eventType === 'INSERT') {
+                        setEvents(prev => [payload.new, ...prev]);
+                        toast.success('New event created!');
+                    } else if (payload.eventType === 'UPDATE') {
+                        setEvents(prev => prev.map(evt =>
+                            evt.id === payload.new.id ? payload.new : evt
+                        ));
+                        // access payload.new as any to avoid TS issues if types aren't perfect
+                        const newEvent = payload.new as any;
+                        const oldEvent = payload.old as any;
+
+                        // Notify if revenue increased
+                        if (newEvent.total_revenue > oldEvent.total_revenue) {
+                            const diff = newEvent.total_revenue - oldEvent.total_revenue;
+                            toast.success(`New Ticket Sold! +₹${diff}`);
+                        }
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [user]);
 
     const fetchDashboardData = async () => {
@@ -87,7 +124,7 @@ const BusinessDashboard = () => {
     }
 
     const totalRevenue = events.reduce((sum, event) => sum + (Number(event.total_revenue) || 0), 0);
-    const totalTicketsSold = events.reduce((sum, event) => sum + (event.tickets_sold || 0), 0);
+    const totalTicketsSold = events.reduce((sum, event) => sum + (event.tickets_issued || 0), 0);
     const eventsUsed = subscription?.events_used || 0;
     const eventsLimit = subscription?.events_limit || Infinity;
     const usagePercentage = eventsLimit === null ? 0 : (eventsUsed / eventsLimit) * 100;

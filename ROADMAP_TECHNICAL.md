@@ -15,9 +15,9 @@
 - [x] **Smart Forecasting:** Implemented weighted growth model in Analytics dashboard.
 - [ ] **Python Microservice:** (Future) Move to server-side Scikit-learn for more accuracy.
 
-### 3. Custom Reporting (Partial)
+### 3. Custom Reporting (Completed)
 - [x] **Cohort Analysis:** Implemented User Retention tracking tab.
-- [ ] **Report Builder:** UI to drag-and-drop metrics and export.
+- [x] **Report Builder:** UI to drag-and-drop metrics and export.
 
 ## 🛡️ Phase 3: Enterprise Security
 **Goal:** hardening the platform for scale.

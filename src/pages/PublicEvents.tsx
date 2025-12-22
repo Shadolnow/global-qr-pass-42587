@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar, MapPin, Ticket, IndianRupee, Search, Filter, Users, Archive, Sparkles } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { format, subDays, isPast, isAfter } from 'date-fns';
 
 const CATEGORIES = [
@@ -229,13 +230,39 @@ const PublicEvents = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4 animate-in fade-in-50 duration-500">
-          <div className="relative">
-            <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-            <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 text-primary animate-pulse" />
+      <div className="min-h-screen p-4 md:p-8 animate-in fade-in-50 duration-500">
+        <div className="container mx-auto max-w-6xl">
+          {/* Header Skeleton */}
+          <div className="text-center mb-8">
+            <Skeleton className="h-12 w-3/4 md:w-1/2 mx-auto mb-4 rounded-xl" />
+            <Skeleton className="h-6 w-1/2 md:w-1/3 mx-auto rounded-lg" />
           </div>
-          <p className="text-lg text-muted-foreground">Loading amazing events...</p>
+
+          {/* Search Skeleton */}
+          <Skeleton className="h-48 w-full rounded-xl mb-8" />
+
+          {/* Cards Grid Skeleton */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="border border-primary/10 rounded-xl overflow-hidden bg-card/50 backdrop-blur-sm">
+                <Skeleton className="h-48 w-full" />
+                <div className="p-6 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <Skeleton className="h-6 w-2/3 rounded-md" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                  <Skeleton className="h-4 w-1/2 rounded-md" />
+
+                  <div className="space-y-2 pt-2">
+                    <Skeleton className="h-4 w-full rounded-md" />
+                    <Skeleton className="h-4 w-3/4 rounded-md" />
+                  </div>
+
+                  <Skeleton className="h-10 w-full rounded-lg mt-4" />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );

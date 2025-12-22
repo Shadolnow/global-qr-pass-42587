@@ -124,6 +124,14 @@ All colors MUST be HSL.
   select,
   textarea {
     transition: var(--transition-smooth);
+    touch-action: manipulation;
+  }
+
+  /* Global micro-interactions for touch */
+  button:active,
+  a.button:active,
+  a[role="button"]:active {
+    transform: scale(0.98);
   }
 
   /* Safe area padding for notched devices */

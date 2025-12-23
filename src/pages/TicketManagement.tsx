@@ -593,7 +593,9 @@ const TicketManagement = () => {
                     schedule: event.schedule,
                     additionalInfo: event.additional_info,
                     socialLinks: event.social_links,
-                    sponsors: event.sponsors
+                    sponsors: event.sponsors,
+                    upiId: event.upi_id || '',
+                    paymentQrImageUrl: event.qr_code_url || ''
                   }}
                 />
               </TabsContent>

@@ -3,10 +3,9 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, MapPin, Sparkles, Ticket, Download, Share2, Printer } from 'lucide-react';
+import { Calendar, MapPin, Ticket, Download, Share2, Printer } from 'lucide-react';
 import { format } from 'date-fns';
 import { LocationQR } from './LocationQR';
-import { AddToWalletButton } from './AddToWalletButton';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 
@@ -43,8 +42,8 @@ export const TicketCard = ({ ticket, compact = false, showActions = true }: Tick
 
     try {
       const canvas = await html2canvas(ticketRef.current, {
-        backgroundColor: "#0a0f1c",
-        scale: 2,
+        backgroundColor: null,
+        scale: 3,
       });
       const link = document.createElement("a");
       link.download = `EventTix-${ticket.ticket_code}.png`;
@@ -66,8 +65,8 @@ export const TicketCard = ({ ticket, compact = false, showActions = true }: Tick
 
     try {
       const canvas = await html2canvas(ticketRef.current, {
-        backgroundColor: "#0a0f1c",
-        scale: 2,
+        backgroundColor: null,
+        scale: 3,
       });
       canvas.toBlob(async (blob) => {
         if (blob && navigator.share) {
@@ -78,13 +77,11 @@ export const TicketCard = ({ ticket, compact = false, showActions = true }: Tick
             files: [file],
           });
         } else if (navigator.share) {
-          // Fallback without image if blob fails
           await navigator.share({
             title: `${ticket.events.title} Ticket`,
             text: `Check out my ticket for ${ticket.events.title}! Code: ${ticket.ticket_code}`,
           });
         } else {
-          // Copy ticket code to clipboard as fallback
           await navigator.clipboard.writeText(`Ticket for ${ticket.events.title}\nCode: ${ticket.ticket_code}`);
           toast.info("Ticket info copied to clipboard!");
         }
@@ -95,148 +92,138 @@ export const TicketCard = ({ ticket, compact = false, showActions = true }: Tick
     }
   };
 
+  const tierName = ticket.tier_name || ticket.ticket_tiers?.name || 'GENERAL ADMISSION';
+
   return (
     <div className="space-y-4">
-      <Card ref={ticketRef} className="relative overflow-hidden border-2 border-primary/30 bg-gradient-to-br from-card via-card to-card/80">
-        {/* Animated background effects */}
-        <div className="absolute inset-0 opacity-30">
-          <div className="absolute top-0 left-0 w-32 h-32 bg-primary/20 rounded-full blur-3xl animate-pulse-slow" />
-          <div className="absolute bottom-0 right-0 w-32 h-32 bg-secondary/20 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
-        </div>
+      <Card ref={ticketRef} className="relative overflow-hidden border-0 shadow-2xl">
+        {/* Main Gradient Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900" />
 
-        {/* Circuit pattern overlay */}
-        <div className="absolute top-0 right-0 w-full h-full opacity-10 pointer-events-none">
-          <svg className="w-full h-full" viewBox="0 0 200 200">
-            <path
-              d="M 20 20 L 80 20 L 80 60 M 120 20 L 180 20 L 180 80 M 20 100 L 60 100 L 60 160 M 140 100 L 180 100"
-              stroke="currentColor"
-              strokeWidth="2"
-              fill="none"
-              className="text-primary"
-            />
-            <circle cx="80" cy="60" r="4" fill="currentColor" className="text-primary" />
-            <circle cx="180" cy="80" r="4" fill="currentColor" className="text-accent" />
-            <circle cx="60" cy="160" r="4" fill="currentColor" className="text-secondary" />
-          </svg>
-        </div>
+        {/* Animated Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/20 via-purple-500/20 to-pink-500/20 animate-gradient" />
 
-        <div className="relative p-6 space-y-6">
-          {/* Header with validation status */}
-          <div className="flex justify-between items-start">
-            <div>
-              <h3 className="text-2xl font-bold text-gradient-cyber mb-1">
-                {ticket.events.title}
-              </h3>
-              <p className="text-sm text-muted-foreground">{ticket.attendee_name}</p>
-              {ticket.attendee_phone && (
-                <p className="text-xs text-muted-foreground mt-1">📱 {ticket.attendee_phone}</p>
-              )}
-              {/* Tier badge */}
-              {(ticket.tier_name || ticket.ticket_tiers?.name) && (
-                <Badge variant="secondary" className="mt-2">
-                  <Ticket className="w-3 h-3 mr-1" />
-                  {ticket.tier_name || ticket.ticket_tiers?.name}
-                </Badge>
-              )}
+        {/* Noise Texture */}
+        <div className="absolute inset-0 opacity-[0.015]" style={{
+          backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 400 400\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'4\' numOctaves=\'4\' /%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\' /%3E%3C/svg%3E")'
+        }} />
+
+        <div className="relative">
+          {/* Header Section */}
+          <div className="relative px-6 pt-6 pb-4">
+            {/* Tier Badge - Top Right */}
+            <div className="absolute top-6 right-6">
+              <Badge className="px-4 py-1.5 text-xs font-bold tracking-wider bg-gradient-to-r from-cyan-400 to-blue-500 text-white border-0 shadow-lg shadow-cyan-500/50">
+                <Ticket className="w-3 h-3 mr-1" />
+                {tierName}
+              </Badge>
             </div>
+
+            {/* Event Title */}
+            <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-200 to-purple-200 mb-1 pr-32">
+              {ticket.events.title}
+            </h2>
+
+            {/* Attendee Name */}
+            <p className="text-lg font-semibold text-cyan-100">{ticket.attendee_name}</p>
+
+            {/* Validation Status */}
             {ticket.is_validated && (
-              <div className="px-3 py-1 rounded-full bg-primary/20 border border-primary/50 text-primary text-xs font-bold shadow-neon-cyan">
-                VALIDATED
+              <div className="absolute top-6 left-6">
+                <div className="px-3 py-1 rounded-full bg-green-500/20 border border-green-400/50 text-green-300 text-xs font-bold backdrop-blur-sm">
+                  ✓ VALIDATED
+                </div>
               </div>
             )}
           </div>
 
-          {/* Event details */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm">
-              <Calendar className="w-4 h-4 text-primary" />
-              <span>{format(new Date(ticket.events.event_date), 'PPP p')}</span>
+          {/* Event Details */}
+          <div className="px-6 pb-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm text-slate-300">
+              <Calendar className="w-4 h-4 text-cyan-400" />
+              <span className="font-medium">{format(new Date(ticket.events.event_date), 'PPP p')}</span>
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <MapPin className="w-4 h-4 text-accent" />
-              <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.events.venue)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 text-primary hover:underline"
-              >
-                {ticket.events.venue}
-              </a>
+            <div className="flex items-start gap-2 text-sm text-slate-300">
+              <MapPin className="w-4 h-4 text-pink-400 mt-0.5 flex-shrink-0" />
+              <span className="font-medium">{ticket.events.venue}</span>
             </div>
           </div>
 
-          {/* Promotion banner */}
-          {ticket.events.promotion_text && (
-            <div className="relative overflow-hidden rounded-lg border border-secondary/30 bg-secondary/10 p-3">
-              <div className="absolute inset-0 animate-shimmer" />
-              <div className="relative flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-secondary" />
-                <span className="text-sm font-semibold text-secondary">
-                  {ticket.events.promotion_text}
-                </span>
-              </div>
-            </div>
-          )}
+          {/* Divider with Glow */}
+          <div className="relative px-6">
+            <div className="h-px bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-50" />
+            <div className="absolute inset-0 h-px bg-gradient-to-r from-transparent via-cyan-500 to-transparent blur-sm" />
+          </div>
 
-          {/* QR Codes section */}
-          <div className="flex flex-col items-center gap-4 pt-4 border-t border-primary/20">
-            <div className="flex gap-6 justify-center items-start flex-wrap">
-              {/* Ticket QR Code */}
-              <div className="flex flex-col items-center gap-2">
-                <div className="relative p-4 rounded-xl bg-background border-2 border-primary/30 shadow-neon-cyan">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 rounded-xl" />
-                  <QRCodeSVG
-                    value={ticket.ticket_code}
-                    size={compact ? 100 : 140}
-                    level="H"
-                    includeMargin={false}
-                    className="relative"
-                  />
+          {/* QR Codes Section */}
+          <div className="px-6 py-6">
+            <div className="grid grid-cols-2 gap-6">
+              {/* Ticket QR */}
+              <div className="flex flex-col items-center gap-3">
+                <div className="relative">
+                  {/* Glow Effect */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-purple-500 rounded-2xl blur-xl opacity-50" />
+
+                  {/* QR Container */}
+                  <div className="relative p-4 rounded-2xl bg-white shadow-xl">
+                    <QRCodeSVG
+                      value={ticket.ticket_code}
+                      size={compact ? 100 : 120}
+                      level="H"
+                      includeMargin={false}
+                    />
+                  </div>
                 </div>
-                <div className="text-center space-y-1">
-                  <p className="text-xs text-muted-foreground font-mono">TICKET CODE</p>
-                  <p className="text-xs font-bold tracking-wider text-primary font-mono">
+
+                {/* Ticket Code */}
+                <div className="text-center">
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">Ticket Code</p>
+                  <p className="text-xs font-bold tracking-widest text-cyan-300 font-mono">
                     {ticket.ticket_code}
                   </p>
                 </div>
               </div>
 
-              {/* Location QR Code */}
-              <div className="flex flex-col items-center gap-2">
+              {/* Venue QR */}
+              <div className="flex flex-col items-center gap-3">
                 <div className="relative">
-                  <LocationQR
-                    address={ticket.events.venue}
-                    size={compact ? 100 : 140}
-                    showLabel={false}
-                  />
+                  {/* Glow Effect */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-pink-500 to-purple-500 rounded-2xl blur-xl opacity-50" />
+
+                  {/* QR Container */}
+                  <div className="relative">
+                    <LocationQR
+                      address={ticket.events.venue}
+                      size={compact ? 100 : 120}
+                      showLabel={false}
+                    />
+                  </div>
                 </div>
-                <div className="text-center space-y-1">
-                  <p className="text-xs text-muted-foreground font-mono flex items-center gap-1 justify-center">
+
+                {/* Location Label */}
+                <div className="text-center">
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">Venue Location</p>
+                  <p className="text-xs font-semibold text-pink-300 flex items-center gap-1">
                     <MapPin className="w-3 h-3" />
-                    VENUE LOCATION
+                    Get Directions
                   </p>
                 </div>
               </div>
             </div>
-
-            {/* Add to Apple Wallet */}
-            <div className="w-full flex justify-center pt-2">
-              <AddToWalletButton />
-            </div>
           </div>
 
-          {/* Decorative footer line */}
-          <div className="h-1 bg-gradient-to-r from-primary via-accent to-secondary rounded-full" />
+          {/* Footer Gradient */}
+          <div className="h-2 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500" />
         </div>
       </Card>
 
-      {/* Action Buttons - Outside the ticket for better screenshot */}
+      {/* Action Buttons */}
       {showActions && (
         <div className="flex gap-3 no-print">
           <Button
             onClick={handleDownload}
             variant="outline"
-            className="flex-1 border-primary/30 text-primary hover:bg-primary/10"
+            className="flex-1 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400"
           >
             <Download className="mr-2 h-4 w-4" />
             Download
@@ -244,7 +231,7 @@ export const TicketCard = ({ ticket, compact = false, showActions = true }: Tick
           <Button
             onClick={handlePrint}
             variant="outline"
-            className="flex-1 border-accent/30 text-accent hover:bg-accent/10"
+            className="flex-1 border-purple-500/30 text-purple-400 hover:bg-purple-500/10 hover:border-purple-400"
           >
             <Printer className="mr-2 h-4 w-4" />
             Print
@@ -252,7 +239,7 @@ export const TicketCard = ({ ticket, compact = false, showActions = true }: Tick
           <Button
             onClick={handleShare}
             variant="outline"
-            className="flex-1 border-secondary/30 text-secondary hover:bg-secondary/10"
+            className="flex-1 border-pink-500/30 text-pink-400 hover:bg-pink-500/10 hover:border-pink-400"
           >
             <Share2 className="mr-2 h-4 w-4" />
             Share

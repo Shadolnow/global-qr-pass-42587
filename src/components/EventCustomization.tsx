@@ -320,14 +320,21 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
           schedule: schedule.filter(s => s.time && s.title) as any,
           additional_info: additionalInfo,
           social_links: socialLinks as any,
-          sponsors: sponsors.filter(s => s.name && s.logoUrl) as any
+          sponsors: sponsors.filter(s => s.name && s.logoUrl) as any,
+          upi_id: upiId || null,
+          qr_code_url: paymentQrImageUrl || null
         })
         .eq('id', eventId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Save error:', error);
+        throw error;
+      }
+
       toast.success('Event customization saved!');
     } catch (error: any) {
-      toast.error('Failed to save customization');
+      console.error('Save error:', error);
+      toast.error(`Failed to save: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -570,10 +577,35 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>FAQ</CardTitle>
-            <Button variant="outline" size="sm" onClick={addFAQ}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add FAQ
-            </Button>
+            <div className="flex gap-2">
+              <select
+                className="px-3 py-1.5 text-sm border rounded-md bg-background"
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const [question, answer] = e.target.value.split('|||');
+                    setFaq([...faq, { question, answer }]);
+                    e.target.value = '';
+                    toast.success('FAQ template added!');
+                  }
+                }}
+              >
+                <option value="">Add from templates...</option>
+                <option value="What time does the event start?|||The event starts at 9:00 PM. Entry gates open at 8:30 PM. Please arrive early to avoid queues.">⏰ Event Timing</option>
+                <option value="What is the dress code?|||Smart casuals are recommended. Entry may be refused for guests in shorts, sleepwear, or inappropriate attire.">👔 Dress Code</option>
+                <option value="Is the ticket refundable?|||Tickets are non-refundable. However, they can be transferred to another person with prior notification.">💰 Refund Policy</option>
+                <option value="Can I bring my own food/drinks?|||Outside food and beverages are not permitted. A wide variety of food and drinks will be available at the venue.">🍕 Food & Drinks</option>
+                <option value="Is there parking available?|||Yes, ample parking is available at the venue. Valet parking is also available at an additional cost.">🚗 Parking</option>
+                <option value="What is the minimum age requirement?|||The event is open to all ages. However, alcohol will only be served to guests 21 and above with valid ID.">🔞 Age Limit</option>
+                <option value="Are stags allowed?|||Yes, stags are welcome. However, couple entry zones have limited stag capacity. Book early!">👥 Stag Entry</option>
+                <option value="Can I upgrade my ticket?|||Yes, you can upgrade to a higher tier by paying the difference. Contact us 24 hours before the event.">⬆️ Ticket Upgrade</option>
+                <option value="What items are not allowed?|||Prohibited items include: weapons, illegal substances, outside alcohol, professional cameras, and laser pointers.">🚫 Prohibited Items</option>
+                <option value="How do I get my ticket?|||Your ticket will be sent to your email immediately after payment. You can also download it from your account.">🎫 Ticket Delivery</option>
+              </select>
+              <Button variant="outline" size="sm" onClick={addFAQ}>
+                <Plus className="w-4 h-4 mr-2" />
+                Custom FAQ
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">

@@ -4,9 +4,10 @@ import type { Database } from "./types";
 
 // Lovable Cloud project configuration
 const LOVABLE_CLOUD_CONFIG = {
-  projectId: "aikfuhueuoiagyviyoou",
-  url: "https://aikfuhueuoiagyviyoou.supabase.co",
-  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpa2Z1aHVldW9pYWd5dml5b291Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxOTM0NTIsImV4cCI6MjA4MTc2OTQ1Mn0.FFeb2EFbd6zsZzx413pZSJ3V_bPl-3O9gdrKBTGw5PE",
+  projectId: "kszyvgqhzguyiibpfpwo",
+  url: "https://kszyvgqhzguyiibpfpwo.supabase.co",
+  // Note: If you face auth issues, please replace this anonKey with the 'anon public' key from your Supabase Settings -> API
+  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtzenl2Z3Foemd1eWlpYnBmcHdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxMDc0OTUsImV4cCI6MjA3ODY4MzQ5NX0.yZUIxyL3XSHCfljaJvO5PQ9-qhzQStSCG85aZKnqups",
 };
 
 type SupabaseEnv = {
@@ -26,15 +27,15 @@ const readEnv = (): SupabaseEnv => {
 
 const resolveConfig = () => {
   const env = readEnv();
-  
+
   // Try environment variables first
   const envUrl = env.url || (env.projectId ? `https://${env.projectId}.supabase.co` : undefined);
   const envKey = env.key;
-  
+
   if (envUrl && envKey) {
     return { url: envUrl, key: envKey };
   }
-  
+
   // Fall back to Lovable Cloud config
   return {
     url: LOVABLE_CLOUD_CONFIG.url,

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SocialShare } from '@/components/SocialShare';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Calendar, MapPin, Download, ArrowLeft, Ticket, Clock, HelpCircle, Image as ImageIcon, CalendarPlus, Users, AlertCircle, Video, Instagram, Facebook, Twitter, Linkedin, Youtube, Globe, Award, CheckCircle2, Copy, IndianRupee } from 'lucide-react';
+import { Calendar, MapPin, Download, ArrowLeft, Ticket, Clock, HelpCircle, Image as ImageIcon, CalendarPlus, Users, AlertCircle, Video, Instagram, Facebook, Twitter, Linkedin, Youtube, Globe, Award, CheckCircle2, Copy, IndianRupee, Music, Tv, Disc3 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -27,6 +27,9 @@ import confetti from 'canvas-confetti';
 import { ReviewSection } from '@/components/ReviewSection';
 import { WaitlistForm } from '@/components/WaitlistForm';
 import { useAuth } from '@/components/AuthProvider';
+import { MultiTicketSelector } from '@/components/MultiTicketSelector';
+import { BulkTicketTab } from '@/components/BulkTicketTab';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface SelectedTier {
   id: string;
@@ -246,12 +249,32 @@ const PublicEvent = () => {
           ticket_code: ticketCode,
           tier_id: selectedTier?.id || null,
           payment_ref_id: refId,
-          payment_status: status
+          payment_status: status,
+          payment_method: paymentType
         })
         .select()
         .single();
 
       if (error) throw error;
+
+      // Trigger Email Sending
+      try {
+        const emailResponse = await supabase.functions.invoke('send-ticket-email', {
+          body: {
+            to: formData.email,
+            ticketCode: ticketCode,
+            attendeeName: formData.name,
+            eventTitle: event.title,
+            eventDate: event.event_date,
+            eventVenue: event.venue,
+            ticketUrl: `${window.location.origin}/ticket/${ticket.id}`
+          }
+        });
+        console.log("Email trigger response:", emailResponse);
+      } catch (emailErr) {
+        console.error("Failed to send email:", emailErr);
+        // Don't block success flow for email failure
+      }
 
       // Set the claimed ticket to show success UI
       setClaimedTicket({ ...ticket, events: event, tier_name: selectedTier?.name });
@@ -309,7 +332,7 @@ const PublicEvent = () => {
         ? '🎉 Ticket claimed successfully!'
         : paymentType === 'upi'
           ? '✅ Ticket generated! Payment verification pending.'
-          : '✅ Ticket reserved! Pay cash at venue.';
+          : '✅ Ticket reserved! Call 7507066880 to complete payment and download your ticket.';
       toast.success(successMsg);
 
       // WhatsApp Link with ticket details
@@ -337,7 +360,9 @@ const PublicEvent = () => {
   };
 
   const handleDownload = () => {
-    toast.info('To save your ticket, take a screenshot or use the share options below');
+    // Open print dialog which allows "Save as PDF" on mobile/desktop
+    window.print();
+    toast.success('Save as PDF to keep your ticket safe!');
   };
 
   const handleAddToCalendar = () => {
@@ -841,11 +866,11 @@ const PublicEvent = () => {
                   </div>
 
                   {/* UPI QR Code */}
-                  {(bankDetails?.qr_code_url || event.payment_qr_image_url) && (
+                  {(bankDetails?.qr_code_url || event.qr_code_url) && (
                     <div className="flex justify-center mb-3">
                       <div className="bg-white p-3 rounded-xl">
                         <img
-                          src={bankDetails?.qr_code_url || event.payment_qr_image_url}
+                          src={bankDetails?.qr_code_url || event.qr_code_url}
                           alt="UPI QR Code"
                           className="w-40 h-40 object-contain"
                         />
@@ -870,25 +895,65 @@ const PublicEvent = () => {
                       </button>
                     </div>
                   ) : (
-                    !bankDetails?.qr_code_url && !event.payment_qr_image_url && (
+                    !bankDetails?.qr_code_url && !event.qr_code_url && (
                       <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs rounded-lg mb-3 text-center">
                         ⚠️ Organizer hasn't provided payment details. Please contact them directly.
                       </div>
                     )
                   )}
 
-                  {/* Instruction */}
-                  <p className="text-xs text-center text-muted-foreground bg-muted/50 p-2 rounded-lg">
-                    💡 Scan the QR code or copy the UPI ID to make payment. Your ticket will be generated and admin will verify.
-                  </p>
+                  {/* Transaction ID Input */}
+                  <div className="space-y-2">
+                    <Label htmlFor="transaction-id" className="text-sm font-semibold">
+                      UPI Transaction ID <span className="text-muted-foreground font-normal">(Optional)</span>
+                    </Label>
+                    <Input
+                      id="transaction-id"
+                      placeholder="Enter UPI reference number (min 6 characters)"
+                      value={transactionId}
+                      onChange={(e) => setTransactionId(e.target.value)}
+                      className="font-mono"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Found in your UPI app's payment success screen. Required for verification.
+                    </p>
+                  </div>
+
+                  {/* Step-by-step Instructions */}
+                  <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                    <p className="text-xs font-semibold">How to complete payment:</p>
+                    <div className="space-y-1.5 text-xs text-muted-foreground">
+                      <div className="flex items-start gap-2">
+                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold">1</span>
+                        <span>Open any UPI app (Google Pay, PhonePe, Paytm, etc.)</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold">2</span>
+                        <span>Scan the QR code or enter the UPI ID manually</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold">3</span>
+                        <span>Complete the payment and note your transaction ID</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold">4</span>
+                        <span>Enter transaction ID above and click "I've Paid" below</span>
+                      </div>
+                    </div>
+                  </div>
 
                   <Button
                     onClick={() => createTicket('upi')}
                     disabled={loading}
                     className="w-full mt-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 min-h-[48px]"
                   >
-                    {loading ? 'Processing...' : '✅ I have made UPI Payment'}
+                    {loading ? 'Processing...' : '✅ I\'ve Paid'}
                   </Button>
+
+                  {/* Contact Info */}
+                  <p className="text-xs text-center text-muted-foreground">
+                    💡 Call <span className="font-semibold text-primary">7507066880</span> to confirm or wait a few hours for verification
+                  </p>
                 </div>
 
                 {/* Divider */}

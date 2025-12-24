@@ -155,22 +155,49 @@ export const BulkTicketTab = ({ eventId, event, onSuccess }: BulkTicketTabProps)
 
             const finalTickets = ticketsWithEvent || createdTickets;
 
-            // Send emails for created tickets (Fire and forget to avoid blocking UI significantly)
-            // We process them in parallel
-            Promise.allSettled(createdTickets.map(ticket =>
-                supabase.functions.invoke('send-ticket-email', {
-                    body: {
-                        to: formData.email,
-                        ticketCode: ticket.ticket_code,
-                        attendeeName: formData.name,
-                        eventTitle: event.title,
-                        eventDate: event.event_date,
-                        eventVenue: event.venue,
-                        ticketUrl: `${window.location.origin}/ticket/${ticket.id}`
-                    }
-                })
-            )).then(results => {
-                console.log('Email sending results:', results);
+            // Send emails for created tickets with detailed logging
+            console.log('🎫 Attempting to send emails for', finalTickets.length, 'tickets');
+
+            Promise.allSettled(finalTickets.map(async (ticket) => {
+                console.log('📧 Sending email for ticket:', ticket.ticket_code);
+
+                try {
+                    const result = await supabase.functions.invoke('send-ticket-email', {
+                        body: {
+                            to: formData.email,
+                            ticketCode: ticket.ticket_code,
+                            attendeeName: formData.name,
+                            eventTitle: event.title,
+                            eventDate: event.event_date,
+                            eventVenue: event.venue,
+                            ticketUrl: `${window.location.origin}/ticket/${ticket.id}`
+                        }
+                    });
+
+                    console.log('✅ Email result for', ticket.ticket_code, ':', result);
+                    return result;
+                } catch (error) {
+                    console.error('❌ Email error for', ticket.ticket_code, ':', error);
+                    throw error;
+                }
+            })).then(results => {
+                const successful = results.filter(r => r.status === 'fulfilled').length;
+                const failed = results.filter(r => r.status === 'rejected').length;
+
+                console.log('📊 Email sending complete:', { successful, failed, total: results.length });
+
+                if (successful > 0) {
+                    toast.success(`Tickets created! Check ${formData.email} for tickets.`, {
+                        description: `${successful} email${successful > 1 ? 's' : ''} sent successfully`
+                    });
+                }
+
+                if (failed > 0) {
+                    console.warn('⚠️ Some emails failed. Results:', results);
+                    toast.info('Tickets created! If email not received, visit My Tickets page.', {
+                        description: 'You can retrieve tickets anytime using your email'
+                    });
+                }
             });
 
             // Success!

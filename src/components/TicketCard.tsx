@@ -179,6 +179,35 @@ export const TicketCard = ({ ticket, compact = false, showActions = true }: Tick
             </div>
           </div>
 
+          {/* Venue QR Code Section */}
+          <div className="flex items-center justify-between gap-4 bg-white/10 backdrop-blur-sm rounded-xl p-4 mt-3">
+            <div className="flex-1">
+              <p className="text-xs opacity-70 mb-1 flex items-center gap-1">
+                <MapPin className="w-3 h-3" />
+                Venue Location
+              </p>
+              <p className="text-sm font-semibold">
+                {ticket.events.venue}
+              </p>
+              <p className="text-xs opacity-70 mt-1">
+                Scan to navigate →
+              </p>
+            </div>
+            <div className="bg-white p-3 rounded-lg">
+              <QRCodeSVG
+                value={
+                  ticket.events.venue.startsWith('http')
+                    ? ticket.events.venue
+                    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.events.venue)}`
+                }
+                size={80}
+                level="H"
+                fgColor="#000000"
+                bgColor="#FFFFFF"
+              />
+            </div>
+          </div>
+
           {/* Footer */}
           <div className="mt-6 pt-4 border-t border-white/20">
             <p className="text-xs opacity-70 text-center">

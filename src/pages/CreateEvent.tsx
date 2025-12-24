@@ -162,9 +162,14 @@ const CreateEvent = () => {
                   id="venue"
                   value={formData.venue}
                   onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
-                  placeholder="Full address for Google Maps"
+                  placeholder="123 Main Street, City, State, ZIP"
                   required
                 />
+                <p className="text-xs text-muted-foreground">
+                  💡 Use a complete address for accurate Google Maps links.
+                  <br />
+                  Example: "123 Broadway, New York, NY 10001" or Google Maps share link
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="image">Event Image</Label>

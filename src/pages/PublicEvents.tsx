@@ -13,12 +13,16 @@ import { format, subDays, isPast, isAfter } from 'date-fns';
 
 const CATEGORIES = [
   { value: 'all', label: 'All Categories' },
-  { value: 'music', label: '🎵 Music' },
-  { value: 'sports', label: '⚽ Sports' },
+  { value: 'concert', label: '🎵 Concert' },
   { value: 'conference', label: '💼 Conference' },
   { value: 'workshop', label: '🎓 Workshop' },
+  { value: 'meetup', label: '🤝 Meetup' },
+  { value: 'party', label: '🎉 Party' },
+  { value: 'music', label: '🎵 Music' },
+  { value: 'sports', label: '⚽ Sports' },
   { value: 'festival', label: '🎪 Festival' },
   { value: 'networking', label: '🤝 Networking' },
+  { value: 'other', label: '📅 Other' },
   { value: 'general', label: '📅 General' },
 ];
 
@@ -39,16 +43,28 @@ const PublicEvents = () => {
     const fetchEvents = async () => {
       const oneWeekAgo = subDays(new Date(), 7);
 
+      console.log('PublicEvents: Fetching all events...');
       // Fetch all events
       const { data, error } = await supabase
         .from('events')
         .select('*')
         .order('event_date', { ascending: false });
 
+      console.log('PublicEvents: Query result:', {
+        eventsCount: data?.length || 0,
+        error: error,
+        data: data
+      });
+
       if (data) {
         // Separate upcoming and past events (1 week old)
         const upcoming = data.filter(event => isAfter(new Date(event.event_date), new Date()));
         const past = data.filter(event => isPast(new Date(event.event_date)) && isAfter(new Date(event.event_date), oneWeekAgo));
+
+        console.log('PublicEvents: Filtered results:', {
+          upcomingCount: upcoming.length,
+          pastCount: past.length
+        });
 
         setUpcomingEvents(upcoming.reverse()); // Show upcoming in ascending order
         setPastEvents(past); // Show past in descending order (most recent first)
@@ -76,9 +92,11 @@ const PublicEvents = () => {
         );
       }
 
-      // Category filter
+      // Category filter (case-insensitive to handle both "Party" and "party")
       if (selectedCategory !== 'all') {
-        filtered = filtered.filter(event => event.category === selectedCategory);
+        filtered = filtered.filter(event =>
+          event.category?.toLowerCase() === selectedCategory.toLowerCase()
+        );
       }
 
       // Price filter

@@ -16,6 +16,7 @@ interface TicketCardProps {
     attendee_name: string;
     attendee_email: string;
     attendee_phone?: string;
+    created_at?: string; // Added creation date
     is_validated: boolean;
     tier_id?: string;
     tier_name?: string;
@@ -122,49 +123,63 @@ export const TicketCard = ({ ticket, compact = false, showActions = true }: Tick
 
         {/* === Main Content Section === */}
         <div className="relative p-8 pb-10 z-10">
-          {/* Header */}
-          <div className="flex justify-between items-start mb-8 filter drop-shadow-lg">
-            <div className="space-y-2">
-              <Badge variant="outline" className="border-[#00E5FF] text-[#00E5FF] bg-[#00E5FF]/5 tracking-widest text-[10px] py-0.5 px-2">
-                {tierName}
-              </Badge>
-              <h2 className="text-3xl font-black italic uppercase tracking-tighter leading-[0.9] text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-100 to-slate-300">
-                {ticket.events.title}
-              </h2>
-            </div>
 
+          {/* Top Date & Status */}
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-3 h-3 text-[#00E5FF]" />
+              <span className="text-[10px] font-bold tracking-widest text-[#00E5FF] uppercase">
+                {format(new Date(ticket.events.event_date), 'MMM dd • h:mm a')}
+              </span>
+            </div>
             {/* Status Indicator */}
-            <div className={`w-3 h-3 rounded-full shadow-[0_0_10px] ${ticket.is_validated ? 'bg-green-500 shadow-green-500' : 'bg-[#00E5FF] shadow-[#00E5FF] animate-pulse'}`} />
+            <div className={`w-2 h-2 rounded-full shadow-[0_0_10px] ${ticket.is_validated ? 'bg-green-500 shadow-green-500' : 'bg-[#00E5FF] shadow-[#00E5FF] animate-pulse'}`} />
           </div>
 
-          {/* Event Info Grid */}
-          <div className="space-y-6">
-            <div className="flex items-start gap-4 group">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-white/10 to-transparent border border-white/10 flex items-center justify-center flex-shrink-0 group-hover:border-[#00E5FF]/50 transition-colors">
-                <Calendar className="w-6 h-6 text-[#00E5FF]" />
-              </div>
-              <div>
-                <p className="text-[10px] text-slate-400 uppercase tracking-[0.2em] font-medium mb-1">Date</p>
-                <p className="font-bold text-lg leading-none">{format(new Date(ticket.events.event_date), 'MMM dd')}</p>
-                <p className="text-sm text-slate-300 mt-1">{format(new Date(ticket.events.event_date), 'EEEE • h:mm a')}</p>
-              </div>
-            </div>
+          {/* Centered Beautiful Header */}
+          <div className="text-center mb-8 relative">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[#00E5FF] blur-[80px] opacity-10 pointer-events-none" />
 
-            <div className="flex items-start gap-4 group">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-white/10 to-transparent border border-white/10 flex items-center justify-center flex-shrink-0 group-hover:border-[#d946ef]/50 transition-colors">
-                <MapPin className="w-6 h-6 text-[#d946ef]" />
-              </div>
-              <div>
-                <p className="text-[10px] text-slate-400 uppercase tracking-[0.2em] font-medium mb-1">Venue</p>
-                <p className="font-bold text-lg leading-tight line-clamp-2">{ticket.events.venue}</p>
+            <Badge variant="outline" className="mb-3 border-[#00E5FF]/30 text-[#00E5FF] bg-[#00E5FF]/5 tracking-[0.2em] text-[10px] py-0.5 px-3 uppercase">
+              {tierName}
+            </Badge>
+
+            <h2 className="relative text-4xl font-black italic uppercase tracking-tighter leading-[0.9] text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/70 drop-shadow-[0_0_15px_rgba(0,229,255,0.5)]">
+              {ticket.events.title}
+            </h2>
+
+            {/* Ticket Creation Time */}
+            <p className="text-[9px] text-slate-400 mt-3 font-medium tracking-wider uppercase">
+              Issued: {ticket.created_at ? format(new Date(ticket.created_at), 'MMM dd, h:mm a') : format(new Date(), 'MMM dd, h:mm a')}
+            </p>
+          </div>
+
+          {/* Info Grid with Small Venue QR */}
+          <div className="space-y-4">
+
+            {/* Venue Card with Mini QR */}
+            <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-white/5 to-white/0 border border-white/10 p-3 transition-all hover:border-[#d946ef]/40">
+              <div className="flex items-start gap-3">
+                <div className="bg-white p-1 rounded-sm shrink-0">
+                  <QRCodeSVG value={ticket.events.venue} size={36} level="L" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <MapPin className="w-3 h-3 text-[#d946ef]" />
+                    <p className="text-[10px] text-slate-400 uppercase tracking-[0.2em] font-medium">Venue</p>
+                  </div>
+                  <p className="font-bold text-sm leading-tight text-slate-200 line-clamp-2">{ticket.events.venue}</p>
+                </div>
               </div>
             </div>
 
             {/* Attendee Strip */}
             {ticket.attendee_name && (
-              <div className="mt-4 pt-4 border-t border-white/10">
-                <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] mb-1">Attendee</p>
-                <p className="text-xl font-mono text-[#00E5FF] tracking-widest uppercase truncate">{ticket.attendee_name}</p>
+              <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-end">
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] mb-1">Attendee</p>
+                  <p className="text-lg font-mono text-[#00E5FF] tracking-widest uppercase truncate max-w-[200px]">{ticket.attendee_name}</p>
+                </div>
               </div>
             )}
           </div>

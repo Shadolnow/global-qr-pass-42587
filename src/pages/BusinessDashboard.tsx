@@ -15,7 +15,6 @@ import {
     Ticket,
     QrCode,
     DollarSign,
-    DollarSign,
     AlertCircle,
     Shield
 } from 'lucide-react';
@@ -142,8 +141,8 @@ const BusinessDashboard = () => {
     const currentPlan = planDetails[subscription?.plan as keyof typeof planDetails] || planDetails.monthly;
 
     return (
-        <div className="min-h-screen bg-background p-8">
-            <div className="container mx-auto max-w-7xl">
+        <div className="min-h-screen bg-background p-mobile">
+            <div className="container-mobile-first max-w-7xl">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-8">
                     <div>
@@ -154,8 +153,8 @@ const BusinessDashboard = () => {
                         <h1 className="text-4xl font-bold text-gradient-cyber">Business Dashboard</h1>
                         <p className="text-muted-foreground mt-2">Welcome back, {subscription?.company_name || 'Business'}</p>
                     </div>
-                    <Link to="/create-event">
-                        <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700">
+                    <Link to="/create-event" className="w-full md:w-auto">
+                        <Button size="lg" className="w-full md:w-auto bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 btn-touch">
                             <Calendar className="w-5 h-5 mr-2" />
                             Create Event
                         </Button>
@@ -175,7 +174,7 @@ const BusinessDashboard = () => {
 
                     <TabsContent value="dashboard">
                         {/* Subscription Card */}
-                        <Card className="mb-8 border-2 border-primary/30 bg-gradient-to-br from-card to-card/50">
+                        <Card className="mb-8 glass-card-hover border-2 border-primary/30">
                             <CardHeader>
                                 <div className="flex justify-between items-start">
                                     <div>
@@ -216,8 +215,8 @@ const BusinessDashboard = () => {
                         </Card>
 
                         {/* Stats Grid */}
-                        <div className="grid md:grid-cols-3 gap-6 mb-8">
-                            <Card className="border-2 border-primary/20">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
+                            <Card className="glass-stat-card border-2 border-primary/20 haptic-tap">
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2 text-lg">
                                         <Ticket className="w-5 h-5 text-cyan-400" />
@@ -230,7 +229,7 @@ const BusinessDashboard = () => {
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-2 border-primary/20">
+                            <Card className="glass-stat-card border-2 border-primary/20 haptic-tap">
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2 text-lg">
                                         <QrCode className="w-5 h-5 text-purple-400" />
@@ -243,7 +242,7 @@ const BusinessDashboard = () => {
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-2 border-primary/20">
+                            <Card className="glass-stat-card border-2 border-primary/20 haptic-tap">
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2 text-lg">
                                         <DollarSign className="w-5 h-5 text-green-400" />
@@ -258,8 +257,8 @@ const BusinessDashboard = () => {
                         </div>
 
                         {/* Quick Actions */}
-                        <div className="grid md:grid-cols-3 gap-6 mb-8">
-                            <Card className="border-2 border-cyan-500/30 hover:border-cyan-500/50 transition-all cursor-pointer" onClick={() => navigate('/events')}>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
+                            <Card className="glass-interactive border-2 border-cyan-500/30 hover:border-cyan-500/50 transition-all cursor-pointer touch-spring" onClick={() => navigate('/events')}>
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
                                         <Calendar className="w-5 h-5 text-cyan-400" />
@@ -269,7 +268,7 @@ const BusinessDashboard = () => {
                                 </CardHeader>
                             </Card>
 
-                            <Card className="border-2 border-purple-500/30 hover:border-purple-500/50 transition-all cursor-pointer" onClick={() => navigate('/bank-accounts')}>
+                            <Card className="glass-interactive border-2 border-purple-500/30 hover:border-purple-500/50 transition-all cursor-pointer touch-spring" onClick={() => navigate('/bank-accounts')}>
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
                                         <CreditCard className="w-5 h-5 text-purple-400" />

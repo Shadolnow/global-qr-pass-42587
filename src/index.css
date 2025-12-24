@@ -771,3 +771,294 @@ All colors MUST be HSL.
   z-index: -1;
   pointer-events: none;
 }
+
+/* ==========================================
+   MOBILE-FIRST & GLASSMORPHISM ENHANCEMENTS
+   ========================================== */
+
+/* Enhanced glassmorphism variants */
+.glass-card-hover {
+  background: rgba(17, 25, 40, 0.75);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.125);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card-hover:hover {
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
+}
+
+.glass-interactive {
+  background: rgba(17, 25, 40, 0.75);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.125);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-interactive:active {
+  transform: scale(0.98);
+  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Glass modal/dialog */
+.glass-modal {
+  background: rgba(17, 25, 40, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 12px 48px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* Glass stat card with glow */
+.glass-stat-card {
+  background: rgba(17, 25, 40, 0.8);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.125);
+  box-shadow:
+    0 8px 32px 0 rgba(0, 0, 0, 0.37),
+    0 0 20px rgba(6, 182, 212, 0.1);
+  transition: all 0.3s ease;
+}
+
+.glass-stat-card:hover {
+  box-shadow:
+    0 12px 40px 0 rgba(0, 0, 0, 0.45),
+    0 0 30px rgba(6, 182, 212, 0.2);
+  border-color: rgba(6, 182, 212, 0.3);
+}
+
+/* Mobile-first responsive containers */
+.container-mobile-first {
+  padding-left: 1rem;
+  padding-right: 1rem;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (min-width: 640px) {
+  .container-mobile-first {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-mobile-first {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+/* Swipe indicators for mobile interactions */
+.swipe-indicator {
+  position: relative;
+}
+
+.swipe-indicator::after {
+  content: '';
+  position: absolute;
+  bottom: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3rem;
+  height: 0.25rem;
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 9999px;
+}
+
+/* Swipe action hint */
+.swipe-action-hint {
+  position: relative;
+  overflow: hidden;
+}
+
+.swipe-action-hint::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+      transparent 0%,
+      hsl(var(--primary) / 0.05) 50%,
+      transparent 100%);
+  animation: swipe-hint 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes swipe-hint {
+
+  0%,
+  100% {
+    transform: translateX(-100%);
+  }
+
+  50% {
+    transform: translateX(100%);
+  }
+}
+
+/* Touch-optimized buttons */
+.btn-touch {
+  min-height: 48px;
+  min-width: 48px;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-touch:active {
+  transform: scale(0.95);
+}
+
+/* Large mobile CTA button */
+.btn-mobile-cta {
+  min-height: 56px;
+  width: 100%;
+  font-size: 1.125rem;
+  font-weight: 700;
+  padding: 1rem 2rem;
+  border-radius: var(--radius);
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-mobile-cta:active {
+  transform: scale(0.98);
+}
+
+@media (min-width: 768px) {
+  .btn-mobile-cta {
+    width: auto;
+    min-width: 200px;
+  }
+}
+
+/* Touch target enforcement */
+.touch-target-min {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.touch-target-recommended {
+  min-height: 48px;
+  min-width: 48px;
+}
+
+/* Mobile card list (alternative to tables) */
+.mobile-card-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .mobile-card-list {
+    display: none;
+  }
+}
+
+/* Desktop table (hidden on mobile) */
+.desktop-table-wrapper {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .desktop-table-wrapper {
+    display: block;
+  }
+}
+
+/* Bottom sheet animation for mobile dialogs */
+@media (max-width: 640px) {
+  .bottom-sheet-content {
+    position: fixed !important;
+    bottom: 0 !important;
+    top: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    max-height: 90vh;
+    border-radius: 1.5rem 1.5rem 0 0 !important;
+    animation: slideUpFromBottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes slideUpFromBottom {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+}
+
+/* Enhanced card with glass and touch feedback */
+.card-glass-touch {
+  background: rgba(17, 25, 40, 0.75);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.125);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card-glass-touch:hover {
+  border-color: rgba(6, 182, 212, 0.3);
+  box-shadow:
+    0 12px 40px 0 rgba(0, 0, 0, 0.45),
+    0 0 20px rgba(6, 182, 212, 0.15);
+}
+
+.card-glass-touch:active {
+  transform: scale(0.99);
+}
+
+/* Responsive padding utilities */
+.p-mobile {
+  padding: 1rem;
+}
+
+@media (min-width: 768px) {
+  .p-mobile {
+    padding: 2rem;
+  }
+}
+
+.px-mobile {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 768px) {
+  .px-mobile {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+.py-mobile {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+@media (min-width: 768px) {
+  .py-mobile {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+}

@@ -68,18 +68,23 @@ const PublicEvent = () => {
     if (!eventId) return;
 
     const fetchEvent = async () => {
+      console.log('Fetching event with ID:', eventId);
       const { data, error } = await supabase
         .from('events')
         .select('*')
         .eq('id', eventId)
         .maybeSingle();
 
+      console.log('Event fetch result:', { data, error });
+
       if (error || !data) {
+        console.error('Event fetch error:', error);
         toast.error('Event not found');
         navigate('/public-events');
         return;
       }
 
+      console.log('Event loaded successfully:', data.title);
       setEvent(data);
 
       // Check if event has tiers

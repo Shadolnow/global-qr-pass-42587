@@ -35,23 +35,23 @@ const Events = () => {
   }, [user]);
 
   return (
-    <div className="min-h-screen p-8">
-      <div className="container mx-auto">
+    <div className="min-h-screen p-mobile">
+      <div className="container-mobile-first">
         <Button variant="ghost" onClick={() => navigate('/')} className="mb-6">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
 
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-          <h1 className="text-4xl font-bold text-gradient-cyber">My Events</h1>
-          <Button onClick={() => navigate('/global-tickets')} variant="cyber" className="w-full md:w-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <h1 className="text-3xl md:text-4xl font-bold text-gradient-cyber">My Events</h1>
+          <Button onClick={() => navigate('/global-tickets')} variant="cyber" className="w-full md:w-auto btn-touch">
             <Ticket className="w-4 h-4 mr-2" />
             Global Ticket Database
           </Button>
         </div>
 
         {/* Public Events Link Card */}
-        <Card className="mb-8 border-2 border-primary/30 bg-gradient-to-r from-card to-card/80">
+        <Card className="mb-8 glass-card-hover border-2 border-primary/30">
           <CardContent className="py-6">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
@@ -63,6 +63,7 @@ const Events = () => {
               <div className="flex gap-2">
                 <Button
                   variant="outline"
+                  className="btn-touch"
                   onClick={() => {
                     const url = `${PUBLIC_BASE_URL}/public-events`;
                     navigator.clipboard.writeText(url);
@@ -73,6 +74,7 @@ const Events = () => {
                 </Button>
                 <Button
                   variant="default"
+                  className="btn-touch"
                   onClick={() => {
                     const url = `${PUBLIC_BASE_URL}/public-events`;
                     window.open(url, '_blank', 'noopener');
@@ -86,9 +88,9 @@ const Events = () => {
           </CardContent>
         </Card>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {events.map((event) => (
-            <Card key={event.id} className="border-2 border-primary/20 hover:border-primary/40 transition-all hover:shadow-neon-cyan">
+            <Card key={event.id} className="card-glass-touch border-2 border-primary/20 hover:border-primary/40">
               <CardHeader>
                 <CardTitle>{event.title}</CardTitle>
                 <CardDescription className="flex items-center gap-2">
@@ -120,7 +122,7 @@ const Events = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1"
+                      className="flex-1 touch-target-min"
                       onClick={() => {
                         setSelectedEvent(event);
                         setQrDialogOpen(true);
@@ -132,7 +134,7 @@ const Events = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1"
+                      className="flex-1 touch-target-min"
                       onClick={() => {
                         const url = `${PUBLIC_BASE_URL}/e/${event.id}`;
                         if (navigator.share) {
@@ -152,7 +154,7 @@ const Events = () => {
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <Link to={`/event/${event.id}/tickets`} className="flex-1">
-                      <Button variant="default" className="w-full">
+                      <Button variant="default" className="w-full touch-target-min">
                         <Ticket className="w-4 h-4 mr-2" />
                         Tickets
                       </Button>

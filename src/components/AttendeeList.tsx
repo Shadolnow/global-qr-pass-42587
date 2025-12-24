@@ -123,7 +123,7 @@ export const AttendeeList = ({ tickets, eventTitle, eventId }: AttendeeListProps
     try {
       const { error } = await supabase
         .from('tickets')
-        .update({ 
+        .update({
           is_validated: isValidated,
           validated_at: isValidated ? new Date().toISOString() : null
         })
@@ -147,14 +147,14 @@ export const AttendeeList = ({ tickets, eventTitle, eventId }: AttendeeListProps
   };
 
   return (
-    <Card className="border-2 border-primary/20">
+    <Card className="glass-card-hover border-2 border-primary/20">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Attendee List</CardTitle>
             <CardDescription>Manage attendees and verify payments</CardDescription>
           </div>
-          <Button variant="outline" onClick={downloadCSV} disabled={isExporting}>
+          <Button variant="outline" onClick={downloadCSV} disabled={isExporting} className="btn-touch">
             <Download className="w-4 h-4 mr-2" />
             {isExporting ? 'Exporting...' : 'Download CSV'}
           </Button>
@@ -194,7 +194,7 @@ export const AttendeeList = ({ tickets, eventTitle, eventId }: AttendeeListProps
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
+                          <Button variant="ghost" className="h-10 w-10 p-0 touch-target-min">
                             <span className="sr-only">Open menu</span>
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>

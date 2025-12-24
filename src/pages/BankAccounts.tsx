@@ -147,8 +147,8 @@ const BankAccounts = () => {
     };
 
     return (
-        <div className="min-h-screen bg-background p-4 md:p-8">
-            <div className="container mx-auto max-w-5xl">
+        <div className="min-h-screen bg-background p-mobile">
+            <div className="container-mobile-first max-w-5xl">
                 {/* Header */}
                 <Button variant="ghost" onClick={() => navigate('/business-dashboard')} className="mb-6">
                     <ArrowLeft className="w-4 h-4 mr-2" />
@@ -162,12 +162,12 @@ const BankAccounts = () => {
                     </div>
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <Button className="bg-gradient-to-r from-cyan-500 to-purple-600 shadow-lg hover:shadow-cyan-500/25 transition-all">
+                            <Button className="w-full md:w-auto bg-gradient-to-r from-cyan-500 to-purple-600 shadow-lg hover:shadow-cyan-500/25 transition-all btn-touch">
                                 <Plus className="w-4 h-4 mr-2" />
                                 Add Payment Method
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[500px]">
+                        <DialogContent className="sm:max-w-[500px] bottom-sheet-content glass-modal">
                             <DialogHeader>
                                 <DialogTitle>Add Payment Method</DialogTitle>
                                 <DialogDescription>
@@ -262,7 +262,7 @@ const BankAccounts = () => {
                         <Loader2 className="w-8 h-8 animate-spin text-primary" />
                     </div>
                 ) : accounts.length === 0 ? (
-                    <Card className="border-2 border-dashed border-border/50">
+                    <Card className="border-2 border-dashed border-border/50 glass-card">
                         <CardContent className="flex flex-col items-center justify-center py-16">
                             <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center mb-4">
                                 <CreditCard className="w-10 h-10 text-muted-foreground" />
@@ -278,9 +278,9 @@ const BankAccounts = () => {
                         </CardContent>
                     </Card>
                 ) : (
-                    <div className="grid md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                         {accounts.map((account: any) => (
-                            <Card key={account.id} className="border-2 border-primary/10 hover:border-primary/30 transition-all relative overflow-hidden group">
+                            <Card key={account.id} className="card-glass-touch border-2 border-primary/10 hover:border-primary/30 relative overflow-hidden group">
                                 {account.is_primary && (
                                     <div className="absolute top-0 right-0 p-2">
                                         <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20">Primary</Badge>
@@ -334,14 +334,14 @@ const BankAccounts = () => {
 
                                 <CardFooter className="pt-2 flex justify-between">
                                     {!account.is_primary && (
-                                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
+                                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary touch-target-min">
                                             Make Primary
                                         </Button>
                                     )}
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="text-destructive hover:text-destructive hover:bg-destructive/10 ml-auto"
+                                        className="text-destructive hover:text-destructive hover:bg-destructive/10 ml-auto touch-target-min"
                                         onClick={() => deleteAccount(account.id)}
                                     >
                                         <Trash2 className="w-4 h-4 mr-2" />

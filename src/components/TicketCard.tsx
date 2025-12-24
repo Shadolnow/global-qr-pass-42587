@@ -46,13 +46,17 @@ export const TicketCard = ({ ticket, compact = false, showActions = true }: Tick
 
     try {
       const canvas = await html2canvas(ticketRef.current, {
-        backgroundColor: null, // Transparent background for the PNG
+        backgroundColor: '#050505', // Match ticket background instead of transparent
         scale: 3,
         logging: false,
+        useCORS: true, // Enable CORS for images
+        allowTaint: true, // Allow cross-origin images
+        imageTimeout: 0, // No timeout for image loading
+        removeContainer: true,
       });
       const link = document.createElement("a");
       link.download = `Ticket-LIVE-${ticket.ticket_code}.png`;
-      link.href = canvas.toDataURL("image/png");
+      link.href = canvas.toDataURL("image/png", 1.0); // Max quality
       link.click();
       toast.success("Ticket downloaded!");
     } catch (error) {
@@ -70,8 +74,12 @@ export const TicketCard = ({ ticket, compact = false, showActions = true }: Tick
 
     try {
       const canvas = await html2canvas(ticketRef.current, {
-        backgroundColor: null,
+        backgroundColor: '#050505',
         scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        imageTimeout: 0,
+        removeContainer: true,
       });
       canvas.toBlob(async (blob) => {
         if (blob && navigator.share) {
@@ -82,10 +90,10 @@ export const TicketCard = ({ ticket, compact = false, showActions = true }: Tick
             files: [file],
           });
         } else {
-          await navigator.clipboard.writeText(`Ticket for ${ticket.events.title}\nCode: ${ticket.ticket_code}`);
+          await navigator.clipboard.writeText(`Ticket for ${ticket.events.title}\\nCode: ${ticket.ticket_code}`);
           toast.info("Ticket info copied to clipboard!");
         }
-      });
+      }, "image/png", 1.0);
     } catch (error) {
       toast.error("Failed to share ticket");
       console.error(error);

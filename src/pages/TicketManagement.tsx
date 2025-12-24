@@ -50,6 +50,10 @@ const TicketManagement = () => {
     phone: ''
   });
 
+  // Bulk Delete States
+  const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+
   useEffect(() => {
     if (searchParams.get('openGenerate') === 'true') {
       setIsDialogOpen(true);
@@ -577,15 +581,99 @@ const TicketManagement = () => {
                   </div>
                 )}
 
+                {/* Bulk Actions Bar */}
+                {tickets.length > 0 && (
+                  <div className="mb-6 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (selectedTickets.length === tickets.length) {
+                            setSelectedTickets([]);
+                          } else {
+                            setSelectedTickets(tickets.map(t => t.id));
+                          }
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedTickets.length === tickets.length && tickets.length > 0}
+                          onChange={() => { }}
+                          className="mr-2 cursor-pointer"
+                        />
+                        Select All ({tickets.length})
+                      </Button>
+
+                      {selectedTickets.length > 0 && (
+                        <Badge variant="secondary" className="text-sm">
+                          {selectedTickets.length} selected
+                        </Badge>
+                      )}
+                    </div>
+
+                    {selectedTickets.length > 0 && (
+                      <Button
+                        variant="destructive"
+                        onClick={() => setBulkDeleteOpen(true)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Selected ({selectedTickets.length})
+                      </Button>
+                    )}
+                  </div>
+                )}
+
                 <div className="grid md:grid-cols-2 gap-6">
-                  {tickets.map((ticket) => (
-                    <Link key={ticket.id} to={`/ ticket / ${ticket.id} `}>
-                      <div className="transition-transform hover:scale-105">
-                        <TicketCard ticket={ticket} compact />
+                  {tickets.map((ticket) => {
+                    const isSelected = selectedTickets.includes(ticket.id);
+
+                    return (
+                      <div
+                        key={ticket.id}
+                        className={`relative border-2 rounded-lg transition-all ${isSelected ? 'border-primary bg-primary/5' : 'border-transparent'
+                          }`}
+                      >
+                        {/* Selection Checkbox */}
+                        <div className="absolute top-3 left-3 z-10">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              if (isSelected) {
+                                setSelectedTickets(prev => prev.filter(id => id !== ticket.id));
+                              } else {
+                                setSelectedTickets(prev => [...prev, ticket.id]);
+                              }
+                            }}
+                            className="w-5 h-5 cursor-pointer accent-primary"
+                          />
+                        </div>
+
+                        {/* Ticket Card */}
+                        <Link to={`/ticket/${ticket.id}`}>
+                          <div className="transition-transform hover:scale-105 pl-8">
+                            <TicketCard ticket={ticket} compact />
+                          </div>
+                        </Link>
                       </div>
-                    </Link>
-                  ))}
+                    );
+                  })}
                 </div>
+
+                {/* Bulk Delete Dialog */}
+                <BulkDeleteDialog
+                  open={bulkDeleteOpen}
+                  onOpenChange={setBulkDeleteOpen}
+                  selectedTickets={tickets.filter(t => selectedTickets.includes(t.id))}
+                  eventId={eventId!}
+                  onSuccess={() => {
+                    setSelectedTickets([]);
+                    // Refresh tickets
+                    window.location.reload();
+                  }}
+                />
               </TabsContent>
 
               <TabsContent value="attendees">
@@ -673,7 +761,7 @@ const TicketManagement = () => {
                           Archive & Bulk Actions
                         </CardTitle>
                         <CardDescription className="mt-1">
-                          View archived tickets and access bulk management tools
+                          View archived tickets and manage bulk operations
                         </CardDescription>
                       </div>
                       <Button onClick={() => navigate('/admin/archive')}>
@@ -684,6 +772,35 @@ const TicketManagement = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                        <h3 className="font-semibold text-green-900 mb-2 flex items-center gap-2">
+                          ✅ Bulk Delete - Now Live!
+                        </h3>
+                        <p className="text-sm text-green-800 mb-4">
+                          You can now select multiple tickets from the Tickets tab and archive them safely.
+                        </p>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="bg-white rounded p-3">
+                            <p className="text-xs text-muted-foreground mb-1">How to use:</p>
+                            <ul className="text-xs space-y-1">
+                              <li>1. Go to "Tickets" tab</li>
+                              <li>2. Check tickets to select</li>
+                              <li>3. Click "Delete Selected"</li>
+                              <li>4. Confirm deletion</li>
+                            </ul>
+                          </div>
+                          <div className="bg-white rounded p-3">
+                            <p className="text-xs text-muted-foreground mb-1">Features:</p>
+                            <ul className="text-xs space-y-1">
+                              <li>✓ Select individual tickets</li>
+                              <li>✓ Select all at once</li>
+                              <li>✓ 2-step confirmation</li>
+                              <li>✓ 14-day archive</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
                         <h3 className="font-semibold text-blue-900 mb-2">📦 Ticket Archive</h3>
                         <p className="text-sm text-blue-800 mb-4">
@@ -708,16 +825,6 @@ const TicketManagement = () => {
                             </ul>
                           </div>
                         </div>
-                      </div>
-
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-                        <h3 className="font-semibold text-yellow-900 mb-2">⚠️ Bulk Delete (Coming Soon)</h3>
-                        <p className="text-sm text-yellow-800 mb-4">
-                          Select multiple tickets from the Tickets tab and use bulk actions to archive them safely.
-                        </p>
-                        <p className="text-xs text-yellow-700">
-                          💡 Tip: For now, use the Archive page to manage deleted tickets. Bulk selection is being implemented.
-                        </p>
                       </div>
                     </div>
                   </CardContent>

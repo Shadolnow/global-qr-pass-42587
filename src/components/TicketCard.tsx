@@ -158,6 +158,58 @@ export const TicketCard = ({ ticket, compact = false, showActions = true }: Tick
           }}
         />
 
+        {/* Floating Particles - Premium Visual Effects */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {/* Layer 1 - Large slow particles */}
+          {[...Array(8)].map((_, i) => (
+            <div
+              key={`particle-large-${i}`}
+              className="absolute rounded-full bg-white/10 backdrop-blur-sm"
+              style={{
+                width: `${12 + Math.random() * 8}px`,
+                height: `${12 + Math.random() * 8}px`,
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animation: `floatParticle ${15 + Math.random() * 10}s ease-in-out infinite`,
+                animationDelay: `${Math.random() * 5}s`,
+                boxShadow: '0 0 20px rgba(255, 255, 255, 0.2)',
+              }}
+            />
+          ))}
+
+          {/* Layer 2 - Medium particles */}
+          {[...Array(12)].map((_, i) => (
+            <div
+              key={`particle-medium-${i}`}
+              className="absolute rounded-full bg-gradient-to-br from-cyan-400/20 to-purple-400/20"
+              style={{
+                width: `${6 + Math.random() * 6}px`,
+                height: `${6 + Math.random() * 6}px`,
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animation: `floatParticle ${10 + Math.random() * 8}s ease-in-out infinite`,
+                animationDelay: `${Math.random() * 3}s`,
+              }}
+            />
+          ))}
+
+          {/* Layer 3 - Small fast particles (sparkles) */}
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={`particle-small-${i}`}
+              className="absolute rounded-full bg-white/30"
+              style={{
+                width: `${2 + Math.random() * 3}px`,
+                height: `${2 + Math.random() * 3}px`,
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animation: `floatParticle ${6 + Math.random() * 6}s ease-in-out infinite, twinkle ${2 + Math.random() * 2}s ease-in-out infinite`,
+                animationDelay: `${Math.random() * 4}s`,
+              }}
+            />
+          ))}
+        </div>
+
         <div className="relative p-8 text-white">
           {/* Header Section with Metallic Effect */}
           <div className="mb-6">

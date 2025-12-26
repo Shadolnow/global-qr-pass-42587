@@ -295,11 +295,17 @@ const PublicEvent = () => {
 
       if (event.is_free) {
         // Free Event: Create ticket immediately
+        console.log("[PAYMENT FLOW] Free event detected - creating ticket immediately");
         await createTicket();
       } else {
         // Paid Event: Show payment dialog
+        console.log("[PAYMENT FLOW] Paid event detected - opening payment dialog");
+        console.log("[PAYMENT FLOW] Event price:", event.ticket_price);
+        console.log("[PAYMENT FLOW] Has QR:", !!event.qr_code_url);
+        console.log("[PAYMENT FLOW] Has UPI ID:", !!event.upi_id);
         setShowPaymentDialog(true);
         setLoading(false);
+        console.log("[PAYMENT FLOW] Payment dialog state set to true");
       }
 
     } catch (error: any) {
@@ -967,6 +973,38 @@ const PublicEvent = () => {
                             <p className="text-xs text-muted-foreground">
                               ⚠️ <strong>Important:</strong> You'll need this PIN + email + phone to retrieve your ticket later
                             </p>
+                          </div>
+
+                          {/* Optional Email Verification */}
+                          <div className="space-y-2">
+                            {!isEmailVerified ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                  sendVerificationEmail();
+                                }}
+                                disabled={!formData.email || verificationSent}
+                                className="w-full border-blue-500/50 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                              >
+                                <Mail className="w-4 h-4 mr-2" />
+                                {verificationSent
+                                  ? "✓ Verification Email Sent - Check Your Inbox"
+                                  : "✉️ Verify Email (Optional but Recommended)"}
+                              </Button>
+                            ) : (
+                              <div className="flex items-center justify-center gap-2 p-3 bg-green-50 dark:bg-green-950/30 border-2 border-green-500/50 rounded-lg">
+                                <CheckCircle2 className="w-5 h-5 text-green-600" />
+                                <span className="text-sm font-semibold text-green-800 dark:text-green-200">
+                                  Email Verified! ✓
+                                </span>
+                              </div>
+                            )}
+                            {!isEmailVerified && !verificationSent && (
+                              <p className="text-xs text-muted-foreground text-center">
+                                💡 Verifying helps us provide faster support if needed
+                              </p>
+                            )}
                           </div>
 
                           {/* Email Verification Status */}

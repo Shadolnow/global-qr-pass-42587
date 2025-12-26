@@ -141,3 +141,51 @@
     filter: blur(1px);
     box-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
 }
+
+/* Holographic Shimmer Effects - Layer 1: White Shimmer Streak */
+@keyframes holographicShimmer {
+    0% {
+        transform: translateX(-100%) translateY(-100%) rotate(30deg);
+    }
+
+    100% {
+        transform: translateX(200%) translateY(200%) rotate(30deg);
+    }
+}
+
+/* Holographic Shimmer Effects - Layer 2: Rainbow Prismatic Colors */
+@keyframes rainbowPrism {
+
+    0%,
+    100% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+}
+
+/* Holographic Shimmer Effects - Layer 3: Light Streak */
+@keyframes lightStreak {
+    0% {
+        opacity: 0;
+        transform: translateX(-50%) scaleX(0);
+    }
+
+    50% {
+        opacity: 1;
+        transform: translateX(0%) scaleX(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateX(50%) scaleX(0);
+    }
+}
+
+/* Hover trigger class */
+.holographic-hover {
+    position: relative;
+    overflow: hidden;
+}

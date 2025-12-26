@@ -210,6 +210,37 @@ export const TicketCard = ({ ticket, compact = false, showActions = true }: Tick
           ))}
         </div>
 
+        {/* Holographic Shimmer Effects - Only Visible on Hover */}
+        <div className="absolute inset-0 overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
+          {/* Layer 1: White Shimmer Streak */}
+          <div
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+            style={{
+              animation: 'holographicShimmer 3s ease-in-out infinite',
+              animationDelay: '0s'
+            }}
+          />
+
+          {/* Layer 2: Rainbow Prismatic Colors */}
+          <div
+            className="absolute inset-0 opacity-60"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,0,255,0.3), rgba(0,255,255,0.3), rgba(255,255,0,0.  3), rgba(255,0,255,0.3))',
+              backgroundSize: '200% 200%',
+              animation: 'rainbowPrism 4s ease infinite'
+            }}
+          />
+
+          {/* Layer 3: Light Streak */}
+          <div
+            className="absolute top-1/3 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/80 to-transparent"
+            style={{
+              animation: 'lightStreak 2.5s ease-in-out infinite',
+              filter: 'blur(2px)'
+            }}
+          />
+        </div>
+
         <div className="relative p-8 text-white">
           {/* Header Section with Metallic Effect */}
           <div className="mb-6">

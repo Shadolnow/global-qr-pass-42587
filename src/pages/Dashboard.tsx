@@ -117,7 +117,7 @@ const Dashboard = () => {
       const { data: response, error: usersError } = await supabase.functions.invoke('admin-manage-users', {
         body: { action: 'list' }
       });
-      
+
       if (usersError) throw usersError;
       setAllUsers(response?.users || []);
 
@@ -161,9 +161,14 @@ const Dashboard = () => {
     setAddingAdmin(true);
 
     try {
-      const targetUser = allUsers.find((u) => u.email === newAdminEmail);
+      // Query auth.users directly via RPC to find user by email
+      const { data: userData, error: userError } = await supabase.rpc('get_user_by_email', {
+        email_input: newAdminEmail.trim()
+      });
 
-      if (!targetUser) {
+      if (userError) throw userError;
+
+      if (!userData || userData.length === 0) {
         toast({
           variant: 'destructive',
           title: 'User not found',
@@ -171,6 +176,8 @@ const Dashboard = () => {
         });
         return;
       }
+
+      const targetUser = userData[0];
 
       // Add admin role
       const { error } = await supabase.from('user_roles').insert({
@@ -193,7 +200,7 @@ const Dashboard = () => {
 
       toast({
         title: 'Admin added',
-        description: `${newAdminEmail} is now an admin.`,
+        description: `${newAdminEmail}is now an admin.`,
       });
 
       setNewAdminEmail('');
@@ -382,7 +389,7 @@ const Dashboard = () => {
                   const userRole = userRoles.find((r) => r.user_id === userData.id);
                   const profile = profiles[userData.id];
                   const currentRole = userRole?.role || 'user';
-                  
+
                   return (
                     <TableRow key={userData.id}>
                       <TableCell className="font-medium">{userData.email}</TableCell>

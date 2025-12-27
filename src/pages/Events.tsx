@@ -4,7 +4,8 @@ import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/integrations/supabase/safeClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Calendar, MapPin, Ticket, QrCode, Share2, ExternalLink, Settings, Download, Plus } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { ArrowLeft, Calendar, MapPin, Ticket, QrCode, Share2, ExternalLink, Settings, Download, Plus, Edit, Save, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
@@ -17,6 +18,8 @@ const Events = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [editedDate, setEditedDate] = useState('');
   const PUBLIC_BASE_URL = (import.meta as any).env?.VITE_PUBLIC_SITE_URL || window.location.origin;
 
   useEffect(() => {
@@ -34,6 +37,25 @@ const Events = () => {
 
     fetchEvents();
   }, [user]);
+
+  const updateEventDate = async (eventId: string, newDate: string) => {
+    try {
+      const { error } = await (supabase as any)
+        .from('events')
+        .update({ event_date: newDate })
+        .eq('id', eventId);
+
+      if (error) throw error;
+
+      // Update local state
+      setEvents(prev => prev.map(e => e.id === eventId ? { ...e, event_date: newDate } : e));
+      setEditingEventId(null);
+      toast.success('Event date updated successfully!');
+    } catch (error: any) {
+      console.error('Error updating event date:', error);
+      toast.error('Failed to update date');
+    }
+  };
 
   return (
     <div className="min-h-screen p-mobile">
@@ -107,9 +129,50 @@ const Events = () => {
             <Card key={event.id} className="card-glass-touch border-2 border-primary/20 hover:border-primary/40">
               <CardHeader>
                 <CardTitle>{event.title}</CardTitle>
-                <CardDescription className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  {format(new Date(event.event_date), 'PPP')}
+                <CardDescription>
+                  {editingEventId === event.id ? (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 flex-shrink-0" />
+                      <Input
+                        type="datetime-local"
+                        value={editedDate}
+                        onChange={(e) => setEditedDate(e.target.value)}
+                        className="h-8 text-xs flex-1"
+                      />
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-green-500 hover:text-green-600"
+                        onClick={() => updateEventDate(event.id, editedDate)}
+                      >
+                        <Save className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7"
+                        onClick={() => setEditingEventId(null)}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      {format(new Date(event.event_date), 'PPP')}
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 ml-2"
+                        onClick={() => {
+                          setEditingEventId(event.id);
+                          setEditedDate(event.event_date.slice(0, 16)); // Format for datetime-local
+                        }}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">

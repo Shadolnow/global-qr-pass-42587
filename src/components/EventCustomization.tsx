@@ -66,12 +66,13 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
   const [discountPercent, setDiscountPercent] = useState(initialData?.discountPercent || 0); // Global event discount
   const [uploading, setUploading] = useState(false);
   const [newVideoUrl, setNewVideoUrl] = useState('');
+  const [uploadingVideo, setUploadingVideo] = useState(false);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const maxGalleryImages = 10;
+    const maxGalleryImages = 20; // Increased from 10 to 20
     if (galleryImages.length + files.length > maxGalleryImages) {
       toast.error(`Maximum ${maxGalleryImages} gallery images allowed`);
       return;
@@ -125,6 +126,60 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
 
   const removeImage = (index: number) => {
     setGalleryImages(galleryImages.filter((_, i) => i !== index));
+  };
+
+  // Local video upload
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate video count
+    if (videos.length >= 5) {
+      toast.error('Maximum 5 videos allowed');
+      return;
+    }
+
+    // Validate file size (50MB max for videos)
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    if (file.size > maxSize) {
+      toast.error('Video file too large. Maximum size is 50MB');
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = ['video/mp4', 'video/webm', 'video/quicktime']; // MP4, WebM, MOV
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Invalid video format. Only MP4, WebM, and MOV are supported');
+      return;
+    }
+
+    setUploadingVideo(true);
+    try {
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
+      const fileName = `${userId}/videos/${eventId}/${crypto.randomUUID()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('event-videos')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('event-videos')
+        .getPublicUrl(fileName);
+
+      // Store video URL with metadata for cleanup
+      setVideos([...videos, publicUrl]);
+      toast.success('Video uploaded successfully!');
+
+      // Reset file input
+      e.target.value = '';
+    } catch (error: any) {
+      console.error('Video upload error:', error);
+      toast.error('Failed to upload video');
+    } finally {
+      setUploadingVideo(false);
+    }
   };
 
   // Video handling
@@ -446,7 +501,7 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="gallery">Upload Images (max 10)</Label>
+            <Label htmlFor="gallery">Upload Images (max 20)</Label>
             <Input
               id="gallery"
               type="file"
@@ -507,29 +562,69 @@ export const EventCustomization = ({ eventId, userId, isFreeEvent = true, initia
             Add up to 5 videos from YouTube or Vimeo to showcase your event
           </p>
 
+          {/* Local Video Upload */}
+          <div className="border-t pt-4">
+            <Label htmlFor="local-video" className="text-sm font-medium">Or Upload Local Video</Label>
+            <div className="mt-2 flex gap-2">
+              <Input
+                id="local-video"
+                type="file"
+                accept="video/mp4,video/webm,video/quicktime"
+                onChange={handleVideoUpload}
+                disabled={uploadingVideo || videos.length >= 5}
+                className="flex-1"
+              />
+              {uploadingVideo && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+                  Uploading...
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              MP4, WebM, or MOV format. Max 50MB. Videos auto-delete after event date.
+            </p>
+          </div>
+
           {videos.length > 0 && (
             <div className="grid gap-4">
-              {videos.map((url, index) => (
-                <div key={index} className="relative">
-                  <div className="aspect-video rounded-lg overflow-hidden border-2 border-border">
-                    <iframe
-                      src={url}
-                      className="w-full h-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      title={`Event video ${index + 1}`}
-                    />
+              {videos.map((url, index) => {
+                // Check if it's an embed URL (YouTube/Vimeo) or direct video URL
+                const isEmbedUrl = url.includes('youtube.com/embed') || url.includes('player.vimeo.com');
+
+                return (
+                  <div key={index} className="relative">
+                    <div className="aspect-video rounded-lg overflow-hidden border-2 border-border">
+                      {isEmbedUrl ? (
+                        <iframe
+                          src={url}
+                          className="w-full h-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          title={`Event video ${index + 1}`}
+                        />
+                      ) : (
+                        <video
+                          src={url}
+                          controls
+                          className="w-full h-full object-contain bg-black"
+                          preload="metadata"
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+                      )}
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-2 right-2"
+                      onClick={() => removeVideo(index)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="absolute top-2 right-2"
-                    onClick={() => removeVideo(index)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

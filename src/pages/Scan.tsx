@@ -275,22 +275,27 @@ const Scan = () => {
       await scanner.start(
         cameraConfig,
         {
-          fps: 20, // Faster scanning - 20 frames per second
-          qrbox: { width: 300, height: 300 }, // Larger scan area
-          aspectRatio: 1.777778, // 16:9 for better camera view
-          disableFlip: false, // Allow horizontal flip
+          fps: 30, // ULTRA FAST scanning
+          qrbox: { width: 350, height: 350 }, // Even larger scan area
+          aspectRatio: 1.777778,
+          disableFlip: false,
           videoConstraints: {
-            advanced: [{ focusMode: "continuous" }] // Continuous autofocus
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            advanced: [{ focusMode: "continuous" }]
+          },
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true // Native scanner if available
           }
         },
         (decodedText) => {
-          console.log("✅ QR Code scanned:", decodedText);
+          console.log("✅ SCANNED:", decodedText);
+          if (navigator.vibrate) navigator.vibrate(200); // Haptic feedback
           validateTicket(decodedText);
         },
         (errorMessage) => {
-          // Only log significant errors, not normal "no QR code found"
-          if (!errorMessage.includes("NotFoundException")) {
-            console.debug("Scanner:", errorMessage);
+          if (errorMessage.includes("permission") || errorMessage.includes("NotAllowed")) {
+            setCameraError("Camera access denied");
           }
         }
       );

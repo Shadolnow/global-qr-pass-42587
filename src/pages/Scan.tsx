@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/safeClient';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Camera, CheckCircle2, XCircle, BarChart3, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Camera, CheckCircle2, XCircle, BarChart3, AlertCircle, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from '@/components/AuthProvider';
@@ -266,15 +267,20 @@ const Scan = () => {
       await scanner.start(
         { facingMode: 'environment' },
         {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
+          fps: 15,
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            return {
+              width: Math.floor(minEdge * 0.7),
+              height: Math.floor(minEdge * 0.7),
+            };
+          },
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true
+          }
         },
         (decodedText) => {
           validateTicket(decodedText);
-          // Optional: Pause scanning after success to prevent double reads
-          // scanner.pause(); 
-          // setTimeout(() => scanner.resume(), 2000);
         },
         (errorMessage) => {
           // Ignore scanning errors (happens when no QR code is in view)
@@ -304,6 +310,34 @@ const Scan = () => {
     if (scannerRef.current?.isScanning) {
       await scannerRef.current.stop();
       setIsScanning(false);
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      if (isScanning) {
+        await stopScanning();
+      }
+
+      toast.info('Analyzing image...');
+
+      const html5QrCode = new Html5Qrcode("qr-reader");
+      const decodedText = await html5QrCode.scanFile(file, true);
+
+      validateTicket(decodedText);
+
+    } catch (err) {
+      console.error('File scan error', err);
+      toast.error('Could not find QR Code in image', {
+        description: 'Try a clearer image or use the camera.'
+      });
+      // Cleanup if needed, though scanFile is usually stateless regarding the DOM element if used carefully, 
+      // but Html5Qrcode constructor requires an element ID.
+      // If "qr-reader" is used, it cleans up after itself for scanFile? 
+      // Actually scanFile doesn't attach video, so it's safer.
     }
   };
 
@@ -361,6 +395,34 @@ const Scan = () => {
                   Stop Camera
                 </Button>
               )}
+            </div>
+
+            <div className="space-y-4">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-muted/20" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">or upload image</span>
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full border-primary/20 hover:bg-primary/5"
+                onClick={() => document.getElementById('qr-file-input')?.click()}
+              >
+                <Upload className="w-5 h-5 mr-2" />
+                Upload QR Image
+              </Button>
+              <Input
+                id="qr-file-input"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
             </div>
           </CardContent>
         </Card>

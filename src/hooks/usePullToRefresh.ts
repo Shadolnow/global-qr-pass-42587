@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { hapticMedium, hapticSuccess } from '@/lib/utils/haptics';
+import { hapticMedium, hapticSuccess } from '@/utils/haptics';
 
 interface UsePullToRefreshOptions {
     onRefresh: () => Promise<void>;

@@ -241,7 +241,7 @@ export const TicketCard = ({ ticket, compact = false, showActions = true }: Tick
           />
         </div>
 
-        <div className="relative p-8 text-white">
+        <div className="relative p-5 md:p-8 text-white">
           {/* Header Section with Metallic Effect */}
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-2">

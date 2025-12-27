@@ -65,10 +65,10 @@ const TicketViewer = () => {
     setDownloading(true);
     try {
       toast.info('Generating ticket image...', { duration: 2000 });
-      
+
       // Wait a bit for any animations to complete
       await new Promise(resolve => setTimeout(resolve, 300));
-      
+
       const canvas = await html2canvas(ticketElement, {
         backgroundColor: format === 'jpg' ? '#0a0f1c' : null,
         scale: 3,
@@ -76,26 +76,26 @@ const TicketViewer = () => {
         useCORS: true,
         allowTaint: true,
       });
-      
+
       // Convert to blob for better quality
       const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
       canvas.toBlob((blob) => {
         if (!blob) {
           throw new Error('Failed to generate image');
         }
-        
+
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.download = `ticket-${ticket.ticket_code}.${format}`;
         link.href = url;
         link.click();
-        
+
         // Cleanup
         setTimeout(() => URL.revokeObjectURL(url), 100);
-        
+
         toast.success(`Ticket downloaded as ${format.toUpperCase()}!`);
       }, mimeType, 1.0);
-      
+
     } catch (error) {
       console.error('Download error:', error);
       toast.error('Download failed. Please take a screenshot instead.', {
@@ -163,7 +163,7 @@ const TicketViewer = () => {
   if (!ticket) return null;
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-4 md:p-8">
       {/* Animated background */}
       <div className="fixed inset-0 -z-10">
         <div className="absolute top-20 left-10 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse-slow" />
@@ -195,20 +195,20 @@ const TicketViewer = () => {
                 <h3 className="text-lg font-semibold mb-1">Download Your Ticket</h3>
                 <p className="text-sm text-muted-foreground">Save as image for offline access</p>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-3">
-                <Button 
-                  variant="outline" 
-                  className="w-full border-primary/30 hover:bg-primary/10" 
+                <Button
+                  variant="outline"
+                  className="w-full border-primary/30 hover:bg-primary/10"
                   onClick={() => handleDownload('png')}
                   disabled={downloading}
                 >
                   <Download className="w-4 h-4 mr-2" />
                   {downloading ? 'Generating...' : 'PNG'}
                 </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full border-primary/30 hover:bg-primary/10" 
+                <Button
+                  variant="outline"
+                  className="w-full border-primary/30 hover:bg-primary/10"
                   onClick={() => handleDownload('jpg')}
                   disabled={downloading}
                 >
@@ -226,10 +226,10 @@ const TicketViewer = () => {
                 <h3 className="text-lg font-semibold mb-1">Share Your Ticket</h3>
                 <p className="text-sm text-muted-foreground">Share with friends & on social media</p>
               </div>
-              
-              <Button 
+
+              <Button
                 size="lg"
-                className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70" 
+                className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
                 onClick={handleShare}
               >
                 <Share2 className="w-5 h-5 mr-2" />
@@ -244,8 +244,8 @@ const TicketViewer = () => {
                   <span className="bg-card px-2 text-muted-foreground">or share via</span>
                 </div>
               </div>
-              
-              <SocialShare 
+
+              <SocialShare
                 url={window.location.href}
                 title={`Ticket for ${ticket.events.title}`}
                 description={`Check out my ticket for ${ticket.events.title}!`}

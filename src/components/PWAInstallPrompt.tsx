@@ -24,7 +24,17 @@ const PWAInstallPrompt = () => {
         const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
         setIsIOS(iOS);
 
-        // Listen for install prompt
+        if (iOS) {
+            // iOS doesn't support beforeinstallprompt, so we check purely based on platform logic
+            setTimeout(() => {
+                const dismissed = localStorage.getItem('pwa-install-dismissed');
+                if (!dismissed) {
+                    setShowPrompt(true);
+                }
+            }, 3000); // 3 seconds delay for iOS
+        }
+
+        // Listen for install prompt (Android/Desktop)
         const handleBeforeInstallPrompt = (e: Event) => {
             e.preventDefault();
             setDeferredPrompt(e as BeforeInstallPromptEvent);
@@ -74,14 +84,14 @@ const PWAInstallPrompt = () => {
                 <CardContent className="p-4">
                     <div className="flex items-start gap-3">
                         <div className="flex-shrink-0">
-                            <Smartphone className="w-6 h-6 text-primary" />
+                            <Smartphone className="w-8 h-8 text-primary" />
                         </div>
                         <div className="flex-1 space-y-2">
                             <div className="flex items-start justify-between">
                                 <div>
-                                    <h3 className="font-semibold text-sm">Install EventTix</h3>
+                                    <h3 className="font-semibold text-base">Install App</h3>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        Add to your home screen for the best experience
+                                        App Store experience, no download required.
                                     </p>
                                 </div>
                                 <Button
@@ -93,13 +103,18 @@ const PWAInstallPrompt = () => {
                                     <X className="h-4 w-4" />
                                 </Button>
                             </div>
-                            <div className="text-xs space-y-1 bg-muted/50 p-3 rounded-lg">
-                                <p className="font-medium">How to install:</p>
-                                <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                                    <li>Tap the Share button (square with arrow)</li>
-                                    <li>Scroll down and tap "Add to Home Screen"</li>
-                                    <li>Tap "Add" to confirm</li>
-                                </ol>
+                            <div className="text-sm space-y-3 bg-muted/50 p-3 rounded-lg border border-white/10">
+                                <p className="font-semibold text-primary">Tap the buttons below:</p>
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-3">
+                                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold">1</span>
+                                        <span className="flex-1">Tap Share <svg className="inline w-4 h-4 mx-1 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg> in menu</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold">2</span>
+                                        <span className="flex-1">Scroll & Tap 'Add to Home Screen' <svg className="inline w-4 h-4 mx-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></svg></span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

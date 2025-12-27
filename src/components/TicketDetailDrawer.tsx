@@ -10,18 +10,19 @@ import {
 } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Download, 
-  Mail, 
-  Share2, 
-  ExternalLink, 
-  Copy, 
+import {
+  Download,
+  Mail,
+  Share2,
+  ExternalLink,
+  Copy,
   Check,
   Calendar,
   MapPin,
   User,
   Phone,
-  Ticket
+  Ticket,
+  CheckCircle
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/safeClient';
 import { toast } from 'sonner';
@@ -44,6 +45,7 @@ export const TicketDetailDrawer = ({ ticket, open, onOpenChange }: TicketDetailD
       case 'paid': return 'bg-green-500/10 text-green-400 border-green-500/20';
       case 'pay_at_venue': return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
       case 'pending': return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
+      case 'used': return 'bg-green-600/10 text-green-500 border-green-600/20';
       default: return 'bg-muted text-muted-foreground';
     }
   };
@@ -55,6 +57,27 @@ export const TicketDetailDrawer = ({ ticket, open, onOpenChange }: TicketDetailD
   const handleDownload = () => {
     window.open(`/ticket/${ticket.id}?download=true`, '_blank');
     toast.success('Opening ticket for download');
+  };
+
+  const handleValidateEntry = async () => {
+    try {
+      const { error } = await supabase
+        .from('tickets')
+        .update({
+          payment_status: 'used',
+          scanned_at: new Date().toISOString()
+        })
+        .eq('id', ticket.id);
+
+      if (error) throw error;
+
+      toast.success('✅ Entry validated! Ticket marked as used.');
+      onOpenChange(false);
+      window.location.reload(); // Refresh list
+    } catch (error) {
+      console.error('Error validating ticket:', error);
+      toast.error('Failed to validate ticket');
+    }
   };
 
   const handleResendEmail = async () => {
@@ -83,7 +106,7 @@ export const TicketDetailDrawer = ({ ticket, open, onOpenChange }: TicketDetailD
 
   const handleShare = async () => {
     const ticketUrl = `${window.location.origin}/ticket/${ticket.id}`;
-    
+
     if (navigator.share) {
       try {
         await navigator.share({
@@ -136,7 +159,7 @@ export const TicketDetailDrawer = ({ ticket, open, onOpenChange }: TicketDetailD
             </div>
 
             {/* Ticket Code */}
-            <button 
+            <button
               onClick={handleCopyCode}
               className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-muted/50 rounded-xl active:scale-[0.98] transition-transform"
             >
@@ -211,26 +234,50 @@ export const TicketDetailDrawer = ({ ticket, open, onOpenChange }: TicketDetailD
               )}
             </div>
 
+            {/* VALIDATE ENTRY BUTTON - BIG AND OBVIOUS */}
+            {ticket.payment_status !== 'used' ? (
+              <Button
+                size="lg"
+                className="w-full h-16 bg-green-600 hover:bg-green-700 text-white text-lg font-bold shadow-lg shadow-green-600/20"
+                onClick={handleValidateEntry}
+              >
+                <CheckCircle className="w-6 h-6 mr-2" />
+                ✓ VALIDATE ENTRY
+              </Button>
+            ) : (
+              <div className="bg-green-500/10 border-2 border-green-500/30 rounded-xl p-4 text-center">
+                <p className="text-green-400 font-bold text-lg flex items-center justify-center gap-2">
+                  <CheckCircle className="w-6 h-6" />
+                  ✓ ENTRY VALIDATED
+                </p>
+                {ticket.scanned_at && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Scanned: {format(new Date(ticket.scanned_at), 'MMM d, yyyy • h:mm a')}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Action Buttons */}
             <div className="grid grid-cols-2 gap-3">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="h-14 flex-col gap-1"
                 onClick={handleViewTicket}
               >
                 <ExternalLink className="w-5 h-5" />
                 <span className="text-xs">View</span>
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="h-14 flex-col gap-1"
                 onClick={handleDownload}
               >
                 <Download className="w-5 h-5" />
                 <span className="text-xs">Download</span>
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="h-14 flex-col gap-1"
                 onClick={handleResendEmail}
                 disabled={sendingEmail}
@@ -238,8 +285,8 @@ export const TicketDetailDrawer = ({ ticket, open, onOpenChange }: TicketDetailD
                 <Mail className="w-5 h-5" />
                 <span className="text-xs">{sendingEmail ? 'Sending...' : 'Email'}</span>
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="h-14 flex-col gap-1"
                 onClick={handleShare}
               >
